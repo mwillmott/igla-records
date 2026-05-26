@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IGLA+ Records — Sketches & Directions</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="sketch-styles.css" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: "Geist", system-ui, sans-serif; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="sketch-ia.jsx"></script>
+  <script type="text/babel" src="sketch-wireframes.jsx"></script>
+  <script type="text/babel" src="sketch-directions.jsx"></script>
+  <script type="text/babel" src="sketch-directions-v2.jsx"></script>
+  <script type="text/babel" src="sketch-g-variants.jsx"></script>
+
+  <script type="text/babel">
+    function SketchApp() {
+      return (
+        <DesignCanvas title="IGLA+ Records — Sketches" subtitle="IA, wireframes, and visual directions">
+
+          <DCSection id="ia" title="01 · Information Architecture" subtitle="Four top-level pages and how they connect">
+            <DCArtboard id="sitemap" label="Sitemap & user flows" width={1240} height={720}>
+              <SketchIA />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="wireframes" title="02 · Page wireframes" subtitle="Mid-fi sketches of each page in the IA">
+            <DCArtboard id="wf-results" label="Results · all-time records hub (NEW)" width={560} height={820}>
+              <WFResults />
+            </DCArtboard>
+            <DCArtboard id="wf-clubs" label="Clubs · list view" width={560} height={820}>
+              <WFClubs />
+            </DCArtboard>
+            <DCArtboard id="wf-club-detail" label="Club detail (NEW)" width={560} height={820}>
+              <WFClubDetail />
+            </DCArtboard>
+            <DCArtboard id="wf-tournaments" label="Tournaments · list view" width={560} height={820}>
+              <WFTournaments />
+            </DCArtboard>
+            <DCArtboard id="wf-tournament-detail" label="Tournament detail · = current results page" width={560} height={820}>
+              <WFTournamentDetail />
+            </DCArtboard>
+            <DCArtboard id="wf-athlete" label="Athlete profile · existing" width={560} height={820}>
+              <WFAthleteProfile />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="directions" title="03 · Visual direction explorations" subtitle="The original four — keeping C and D visible for direct comparison">
+            <DCArtboard id="dir-editorial" label="A · Editorial Calm" width={640} height={780}>
+              <DirEditorial />
+            </DCArtboard>
+            <DCArtboard id="dir-magazine" label="B · Magazine Bold" width={640} height={780}>
+              <DirMagazine />
+            </DCArtboard>
+            <DCArtboard id="dir-lanes" label="C · Pool Lanes" width={640} height={780}>
+              <DirPoolLanes />
+            </DCArtboard>
+            <DCArtboard id="dir-playful" label="D · Sport Playful ★ favourite" width={640} height={780}>
+              <DirSportPlayful />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="directions-v2" title="04 · Refined fusions — closer to D, more aquatic" subtitle="Keeping D's chunky simplicity. Borrowing aquatic flavour from C without losing the friendly tile feel.">
+            <DCArtboard id="dir-pool-tile" label="E · Pool Tile" width={640} height={780}>
+              <DirPoolTile />
+            </DCArtboard>
+            <DCArtboard id="dir-lane-tracker" label="F · Lane Tracker" width={640} height={780}>
+              <DirLaneTracker />
+            </DCArtboard>
+            <DCArtboard id="dir-splash" label="G · Splash ★ favourite" width={640} height={780}>
+              <DirSplash />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="g-textures" title="05 · G + texture in the big tiles" subtitle="Three takes on ripples / waves (not surfing) — only the hero block carries the texture; everything else stays plain so it doesn't get busy.">
+            <DCArtboard id="g-ripple" label="G1 · Ripple — concentric arcs" width={640} height={780}>
+              <DirGRipple />
+            </DCArtboard>
+            <DCArtboard id="g-surface" label="G2 · Surface — horizontal sine waves" width={640} height={780}>
+              <DirGSurface />
+            </DCArtboard>
+            <DCArtboard id="g-depth" label="G3 · Depth — atmospheric bands" width={640} height={780}>
+              <DirGDepth />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="g-applied" title="06 · G applied across screens" subtitle="The Splash system used as a real page-by-page UI. Showing G2 · Surface waves on each hero so you can see it in context.">
+            <DCArtboard id="g-clubs" label="Clubs" width={600} height={820}>
+              <GClubsScreen />
+            </DCArtboard>
+            <DCArtboard id="g-tournaments" label="Tournaments" width={600} height={820}>
+              <GTournamentsScreen />
+            </DCArtboard>
+            <DCArtboard id="g-results" label="Results · all-time records" width={600} height={820}>
+              <GResultsScreen />
+            </DCArtboard>
+            <DCArtboard id="g-athlete" label="Athlete profile" width={600} height={820}>
+              <GAthleteScreen />
+            </DCArtboard>
+          </DCSection>
+
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<SketchApp />);
+  </script>
+</body>
+</html>
