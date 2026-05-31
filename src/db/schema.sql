@@ -113,7 +113,6 @@ CREATE TABLE IF NOT EXISTS water_polo_teams (
     goals_for INTEGER,
     goals_against INTEGER,
     points INTEGER,
-    score TEXT,
     created_by TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_by TEXT,

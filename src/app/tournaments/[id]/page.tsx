@@ -76,20 +76,21 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
 
     const divisionsMap = new Map<string, { id: string; name: string; subtitle: string; standings: any[] }>();
     
-    // Divisions Metadata (from data.js)
+    // Divisions Metadata (migrated from A, B, C)
     const divisionMeta: Record<string, { name: string; subtitle: string }> = {
-      'A': { name: 'Division A', subtitle: 'Championship Division' },
-      'B': { name: 'Division B', subtitle: 'Competitive Division' },
-      'C': { name: 'Division C', subtitle: 'Recreational Division' },
+      'Competitive': { name: 'Competitive Division', subtitle: 'Championship standings' },
+      'Intermediate': { name: 'Intermediate Division', subtitle: 'Competitive standings' },
+      'Recreational': { name: 'Recreational Division', subtitle: 'Recreational standings' },
+      'Womens': { name: "Women's Division", subtitle: "Women's standings" },
     };
 
     for (const team of wpTeams) {
-      const divLetter = team.division;
-      if (!divisionsMap.has(divLetter)) {
-        divisionsMap.set(divLetter, {
-          id: divLetter,
-          name: divisionMeta[divLetter]?.name || `Division ${divLetter}`,
-          subtitle: divisionMeta[divLetter]?.subtitle || '',
+      const divName = team.division;
+      if (!divisionsMap.has(divName)) {
+        divisionsMap.set(divName, {
+          id: divName,
+          name: divisionMeta[divName]?.name || `${divName} Division`,
+          subtitle: divisionMeta[divName]?.subtitle || '',
           standings: [],
         });
       }
@@ -108,7 +109,7 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
         ORDER BY r.is_captain DESC, r.cap_number ASC
       `).all(team.id);
 
-      divisionsMap.get(divLetter)!.standings.push({
+      divisionsMap.get(divName)!.standings.push({
         place: team.final_placement,
         teamId: team.id,
         team: team.team_name,

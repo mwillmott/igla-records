@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Waves, Search, Sparkles, Trophy, X, ChevronDown, Award, Edit3, Save, ShieldAlert, Clock } from 'lucide-react';
 import EditResultModal from '../components/EditResultModal';
 import { UserSession } from '@/lib/auth';
+import { WATER_POLO_DIVISIONS } from '@/lib/config';
 
 interface SwimRecord {
   id: string;
@@ -43,7 +44,11 @@ interface WPResult {
   teamName: string;
   clubId: string;
   clubName: string | null;
-  score: string | null;
+  wins: number | null;
+  losses: number | null;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+  points: number | null;
   created_by: string | null;
   created_at: string | null;
   updated_by: string | null;
@@ -55,10 +60,11 @@ interface ResultsClientProps {
   swimmingRecords: SwimRecord[];
   waterPoloResults: WPResult[];
   athletes: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
   session: UserSession | null;
 }
 
-export default function ResultsClient({ swimmingRecords, waterPoloResults, athletes, session }: ResultsClientProps) {
+export default function ResultsClient({ swimmingRecords, waterPoloResults, athletes, clubs, session }: ResultsClientProps) {
   const router = useRouter();
   const [sport, setSport] = useState<'swimming' | 'wp'>('swimming');
   const [search, setSearch] = useState('');
@@ -70,6 +76,11 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
   // Water Polo filter state
   const [wpSearch, setWpSearch] = useState('');
   const [wpDivision, setWpDivision] = useState('all');
+
+  // Searchable club dropdown state in Edit Modal
+  const [clubSearch, setClubSearch] = useState('');
+  const [showClubDropdown, setShowClubDropdown] = useState(false);
+  const clubDropdownRef = useRef<HTMLDivElement>(null);
 
   // Administrative Record Edit States
   const [editingRecord, setEditingRecord] = useState<{
@@ -84,6 +95,24 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Close club dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clubDropdownRef.current && !clubDropdownRef.current.contains(event.target as Node)) {
+        setShowClubDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter clubs in edit modal
+  const filteredClubsForSearch = useMemo(() => {
+    const q = clubSearch.trim().toLowerCase();
+    if (!q) return clubs;
+    return clubs.filter(c => c.name.toLowerCase().includes(q));
+  }, [clubs, clubSearch]);
 
   // Initialize form fields when edit modal is opened
   useEffect(() => {
@@ -104,14 +133,20 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
         });
       } else {
         setEditFields({
-          team_name: editingRecord.data.teamName || editingRecord.data.champion || '',
-          score: editingRecord.data.score || '',
+          team_name: editingRecord.data.teamName || '',
+          club_id: editingRecord.data.clubId || '',
           division: editingRecord.data.division || '',
-          final_placement: editingRecord.data.placement || editingRecord.data.final_placement || 1,
+          final_placement: editingRecord.data.placement || 1,
+          wins: editingRecord.data.wins !== null && editingRecord.data.wins !== undefined ? editingRecord.data.wins : '',
+          losses: editingRecord.data.losses !== null && editingRecord.data.losses !== undefined ? editingRecord.data.losses : '',
+          goals_for: editingRecord.data.goalsFor !== null && editingRecord.data.goalsFor !== undefined ? editingRecord.data.goalsFor : '',
+          goals_against: editingRecord.data.goalsAgainst !== null && editingRecord.data.goalsAgainst !== undefined ? editingRecord.data.goalsAgainst : '',
+          points: editingRecord.data.points !== null && editingRecord.data.points !== undefined ? editingRecord.data.points : '',
         });
+        setClubSearch(editingRecord.data.clubName || '');
       }
     }
-  }, [editingRecord]);
+  }, [editingRecord, clubs]);
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -430,9 +465,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
 
             <SimpleSelect value={wpDivision} onChange={setWpDivision} options={[
               { v: 'all', label: 'All divisions' },
-              { v: 'A', label: 'Division A' },
-              { v: 'B', label: 'Division B' },
-              { v: 'C', label: 'Division C' },
+              ...WATER_POLO_DIVISIONS.map(d => ({ v: d, label: `${d} Division` }))
             ]} />
 
             <div className="results-meta text-xs text-ink-3 tabular-nums ml-auto select-none">
@@ -564,7 +597,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Champion Team Name</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Team Name</label>
                 <input 
                   type="text" 
                   value={editFields.team_name || ''} 
@@ -574,40 +607,132 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Match Score</label>
+              {/* SEARCHABLE CLUB SELECT COMBOBOX */}
+              <div className="flex flex-col gap-1.5 relative" ref={clubDropdownRef}>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Sponsoring Club</label>
+                <div className="relative">
                   <input 
                     type="text" 
-                    value={editFields.score || ''} 
-                    onChange={e => updateField('score', e.target.value)}
-                    className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-mono font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
-                    placeholder="e.g. 12-8 (optional)"
+                    value={clubSearch} 
+                    onChange={e => {
+                      setClubSearch(e.target.value);
+                      setShowClubDropdown(true);
+                      updateField('club_id', ''); // clear id while searching/typing
+                    }}
+                    onFocus={() => setShowClubDropdown(true)}
+                    className="bg-white border-2 border-ink rounded-xl px-3 pr-10 w-full h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    placeholder="Search club name..."
+                    required
                   />
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-2 pointer-events-none" />
+                </div>
+                {showClubDropdown && filteredClubsForSearch.length > 0 && (
+                  <ul className="absolute left-0 right-0 top-16 bg-white border-2 border-ink rounded-xl shadow-md max-h-48 overflow-y-auto z-50 select-none">
+                    {filteredClubsForSearch.map(c => (
+                      <li 
+                        key={c.id} 
+                        onClick={() => {
+                          updateField('club_id', c.id);
+                          setClubSearch(c.name);
+                          setShowClubDropdown(false);
+                        }}
+                        className="px-3.5 py-2 hover:bg-aqua-pale text-xs text-ink font-semibold cursor-pointer border-b border-ink/5 last:border-0"
+                      >
+                        {c.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* DIVISION DROPDOWN SELECT */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Division</label>
+                  <div className="relative select-none">
+                    <select 
+                      value={editFields.division || ''} 
+                      onChange={e => updateField('division', e.target.value)}
+                      className="appearance-none bg-white border-2 border-ink rounded-xl px-3 w-full h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                      required
+                    >
+                      <option value="" disabled>Select Division</option>
+                      {WATER_POLO_DIVISIONS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-2 pointer-events-none" />
+                  </div>
                 </div>
                 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Division</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Placement (Rank)</label>
                   <input 
-                    type="text" 
-                    value={editFields.division || ''} 
-                    onChange={e => updateField('division', e.target.value)}
+                    type="number" 
+                    min="1"
+                    value={editFields.final_placement || 1} 
+                    onChange={e => updateField('final_placement', parseInt(e.target.value) || 1)}
                     className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Placement (Rank)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  value={editFields.final_placement || 1} 
-                  onChange={e => updateField('final_placement', parseInt(e.target.value) || 1)}
-                  className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
-                  required
-                />
+              {/* DETAILED STATS GRID */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Match Standings Statistics (Optional)</label>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Wins</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editFields.wins === '' ? '' : editFields.wins} 
+                      onChange={e => updateField('wins', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Losses</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editFields.losses === '' ? '' : editFields.losses} 
+                      onChange={e => updateField('losses', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Goals For</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editFields.goals_for === '' ? '' : editFields.goals_for} 
+                      onChange={e => updateField('goals_for', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Goals Ag.</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editFields.goals_against === '' ? '' : editFields.goals_against} 
+                      onChange={e => updateField('goals_against', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Points</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editFields.points === '' ? '' : editFields.points} 
+                      onChange={e => updateField('points', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* BEAUTIFUL AUDIT TRAIL LOG */}

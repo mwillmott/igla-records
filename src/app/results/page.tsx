@@ -53,7 +53,11 @@ export default async function ResultsPage() {
       t.team_name AS teamName, 
       t.club_id AS clubId, 
       c.name AS clubName,
-      t.score,
+      t.wins,
+      t.losses,
+      t.goals_for AS goalsFor,
+      t.goals_against AS goalsAgainst,
+      t.points,
       t.created_by,
       t.created_at,
       t.updated_by,
@@ -70,11 +74,17 @@ export default async function ResultsPage() {
     SELECT id, name FROM athletes ORDER BY name ASC
   `).all();
 
+  // 4. Fetch all clubs for editing dropdown selectors
+  const clubs = db.prepare(`
+    SELECT id, name FROM clubs ORDER BY name ASC
+  `).all();
+
   return (
     <ResultsClient 
       swimmingRecords={swimmingRecords as any[]} 
       waterPoloResults={waterPoloResults as any[]} 
       athletes={athletes as any[]}
+      clubs={clubs as any[]}
       session={session}
     />
   );

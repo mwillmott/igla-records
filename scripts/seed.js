@@ -368,8 +368,8 @@ console.log(`Seeded Swimming Results (${resultsRegistry.size} total results).`);
 // 9. Seed Water Polo Standings
 if (IGLA_DATA.waterPolo && IGLA_DATA.waterPolo.divisions) {
   const insertWPTeam = db.prepare(`
-    INSERT INTO water_polo_teams (id, tournament_id, club_id, division, final_placement, team_name, wins, losses, goals_for, goals_against, points, score, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO water_polo_teams (id, tournament_id, club_id, division, final_placement, team_name, wins, losses, goals_for, goals_against, points, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const insertWPRoster = db.prepare(`
@@ -377,25 +377,19 @@ if (IGLA_DATA.waterPolo && IGLA_DATA.waterPolo.divisions) {
     VALUES (?, ?, ?, ?, ?)
   `);
 
+  const divMap = { 'A': 'Competitive', 'B': 'Intermediate', 'C': 'Recreational' };
+
   for (const div of IGLA_DATA.waterPolo.divisions) {
+    const divisionName = divMap[div.id] || div.id;
     for (const team of div.standings) {
       const clubId = team.teamId.split('-')[0];
-      
-      // Look up score in records if they placed 1st
-      let score = null;
-      if (team.place === 1) {
-        const recordMatch = IGLA_RECORDS.waterPolo.find(
-          w => w.clubId === clubId && w.division === div.id && w.year === 2026
-        );
-        score = recordMatch ? recordMatch.score : null;
-      }
       
       // Insert Team Standing
       insertWPTeam.run(
         team.teamId,
         'valencia-2026',
         clubId,
-        div.id,
+        divisionName,
         team.place,
         team.team,
         team.wins,
@@ -403,7 +397,6 @@ if (IGLA_DATA.waterPolo && IGLA_DATA.waterPolo.divisions) {
         team.goalsFor,
         team.goalsAgainst,
         team.points,
-        score,
         'system@igla.org'
       );
 
@@ -426,23 +419,26 @@ console.log('Seeded Valencia 2026 Water Polo Standings & Rosters.');
 
 // Seed historical water polo champions from records
 const insertWPTeamHist = db.prepare(`
-  INSERT OR IGNORE INTO water_polo_teams (id, tournament_id, club_id, division, final_placement, team_name, score, created_by)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO water_polo_teams (id, tournament_id, club_id, division, final_placement, team_name, created_by)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
+
+const divMapHist = { 'A': 'Competitive', 'B': 'Intermediate', 'C': 'Recreational' };
 
 for (const wp of IGLA_RECORDS.waterPolo) {
   const tId = getTournamentId(wp.tournament, wp.year);
   if (!tId) continue;
   
   const teamId = wp.year === 2026 ? `${wp.clubId}-wp` : `${wp.clubId}-wp-${wp.year}`;
+  const divisionName = divMapHist[wp.division] || wp.division;
+
   insertWPTeamHist.run(
     teamId,
     tId,
     wp.clubId,
-    wp.division,
+    divisionName,
     1, // Champions
     wp.champion,
-    wp.score,
     'system@igla.org'
   );
 }

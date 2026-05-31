@@ -84,25 +84,40 @@ export async function POST(request: Request) {
 
       const {
         team_name,
-        score,
+        club_id,
         division,
         final_placement,
+        wins,
+        losses,
+        goals_for,
+        goals_against,
+        points,
       } = fields;
 
       db.prepare(`
         UPDATE water_polo_teams
         SET team_name = ?,
-            score = ?,
+            club_id = ?,
             division = ?,
             final_placement = ?,
+            wins = ?,
+            losses = ?,
+            goals_for = ?,
+            goals_against = ?,
+            points = ?,
             updated_by = ?,
             updated_at = ?
         WHERE id = ?
       `).run(
         team_name,
-        score || null,
+        club_id || null,
         division,
         parseInt(final_placement) || 1,
+        wins !== undefined && wins !== '' && wins !== null ? parseInt(wins) : null,
+        losses !== undefined && losses !== '' && losses !== null ? parseInt(losses) : null,
+        goals_for !== undefined && goals_for !== '' && goals_for !== null ? parseInt(goals_for) : null,
+        goals_against !== undefined && goals_against !== '' && goals_against !== null ? parseInt(goals_against) : null,
+        points !== undefined && points !== '' && points !== null ? parseInt(points) : null,
         session.email,
         timestamp,
         id
