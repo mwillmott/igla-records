@@ -82,6 +82,7 @@ interface TournamentDetailClientProps {
   waterPoloDivisions: WPDivision[];
   athletes: { id: string; name: string }[];
   session: UserSession | null;
+  initialSport?: 'swimming' | 'wp';
 }
 
 export default function TournamentDetailClient({
@@ -91,9 +92,17 @@ export default function TournamentDetailClient({
   waterPoloDivisions,
   athletes,
   session,
+  initialSport = 'swimming',
 }: TournamentDetailClientProps) {
-  const [sport, setSport] = useState<'swimming' | 'wp'>('swimming');
+  const [sport, setSport] = useState<'swimming' | 'wp'>(initialSport);
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
+
+  // Synchronize sport tab if changed from navigation
+  useEffect(() => {
+    if (initialSport) {
+      setSport(initialSport);
+    }
+  }, [initialSport]);
 
   // Swimming Subcomponent State
   const [swimSearch, setSwimSearch] = useState('');

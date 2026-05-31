@@ -7,10 +7,13 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function TournamentDetailPage({ params }: PageProps) {
+export default async function TournamentDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const sParams = await searchParams;
+  const initialSport = sParams?.sport === 'wp' ? 'wp' : 'swimming';
   const session = await getSession();
   
   // 1. Fetch tournament details
@@ -134,6 +137,7 @@ export default async function TournamentDetailPage({ params }: PageProps) {
       waterPoloDivisions={waterPoloDivisions}
       athletes={athletes as any[]}
       session={session}
+      initialSport={initialSport}
     />
   );
 }

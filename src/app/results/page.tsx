@@ -40,16 +40,19 @@ export default async function ResultsPage() {
     ORDER BY r.event ASC, r.age_category ASC, r.gender_category ASC
   `).all();
 
-  // 2. Fetch water polo titles from relational DB
-  const waterPoloTitles = db.prepare(`
+  // 2. Fetch all water polo team results from relational DB
+  const waterPoloResults = db.prepare(`
     SELECT 
       t.id, 
+      t.tournament_id AS tournamentId,
       t.division, 
+      t.final_placement AS placement,
       trn.year, 
       trn.name AS tournament, 
       trn.flag, 
-      t.team_name AS champion, 
+      t.team_name AS teamName, 
       t.club_id AS clubId, 
+      c.name AS clubName,
       t.score,
       t.created_by,
       t.created_at,
@@ -58,8 +61,8 @@ export default async function ResultsPage() {
       (t.final_placement = 1 AND trn.year = 2026) AS held
     FROM water_polo_teams t
     JOIN tournaments trn ON t.tournament_id = trn.id
-    WHERE t.final_placement = 1
-    ORDER BY trn.year DESC, t.division ASC
+    LEFT JOIN clubs c ON t.club_id = c.id
+    ORDER BY trn.year DESC, t.division ASC, t.final_placement ASC
   `).all();
 
   // 3. Fetch all athletes for editing dropdown selectors
@@ -70,7 +73,7 @@ export default async function ResultsPage() {
   return (
     <ResultsClient 
       swimmingRecords={swimmingRecords as any[]} 
-      waterPoloTitles={waterPoloTitles as any[]} 
+      waterPoloResults={waterPoloResults as any[]} 
       athletes={athletes as any[]}
       session={session}
     />

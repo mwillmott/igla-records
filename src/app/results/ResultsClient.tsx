@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Waves, Search, Sparkles, Trophy, X, ChevronDown, Award, Edit3, Save, ShieldAlert, Clock } from 'lucide-react';
 import EditResultModal from '../components/EditResultModal';
 import { UserSession } from '@/lib/auth';
@@ -31,14 +32,17 @@ interface SwimRecord {
   brokenById: string | null;
 }
 
-interface WPTitle {
+interface WPResult {
   id: string;
+  tournamentId: string;
   division: string;
+  placement: number;
   year: number;
   tournament: string;
   flag: string;
-  champion: string;
+  teamName: string;
   clubId: string;
+  clubName: string | null;
   score: string | null;
   created_by: string | null;
   created_at: string | null;
@@ -49,18 +53,23 @@ interface WPTitle {
 
 interface ResultsClientProps {
   swimmingRecords: SwimRecord[];
-  waterPoloTitles: WPTitle[];
+  waterPoloResults: WPResult[];
   athletes: { id: string; name: string }[];
   session: UserSession | null;
 }
 
-export default function ResultsClient({ swimmingRecords, waterPoloTitles, athletes, session }: ResultsClientProps) {
+export default function ResultsClient({ swimmingRecords, waterPoloResults, athletes, session }: ResultsClientProps) {
+  const router = useRouter();
   const [sport, setSport] = useState<'swimming' | 'wp'>('swimming');
   const [search, setSearch] = useState('');
   const [age, setAge] = useState('all');
   const [gender, setGender] = useState('all');
   const [course, setCourse] = useState('all');
   const [heldOnly, setHeldOnly] = useState(true);
+
+  // Water Polo filter state
+  const [wpSearch, setWpSearch] = useState('');
+  const [wpDivision, setWpDivision] = useState('all');
 
   // Administrative Record Edit States
   const [editingRecord, setEditingRecord] = useState<{
@@ -95,10 +104,10 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
         });
       } else {
         setEditFields({
-          team_name: editingRecord.data.champion,
+          team_name: editingRecord.data.teamName || editingRecord.data.champion || '',
           score: editingRecord.data.score || '',
-          division: editingRecord.data.division,
-          final_placement: 1,
+          division: editingRecord.data.division || '',
+          final_placement: editingRecord.data.placement || editingRecord.data.final_placement || 1,
         });
       }
     }
@@ -186,6 +195,19 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
     });
   }, [swimmingRecords, age, gender, course, heldOnly, search]);
 
+  // Apply filters to water polo results
+  const filteredWP = useMemo(() => {
+    const q = wpSearch.trim().toLowerCase();
+    return waterPoloResults.filter(w => {
+      if (wpDivision !== 'all' && w.division !== wpDivision) return false;
+      if (q) {
+        const hay = `${w.teamName || ''} ${w.clubName || ''} ${w.tournament || ''} ${w.division || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [waterPoloResults, wpSearch, wpDivision]);
+
   // Sliding Sport Toggle Background Animation
   const swimmingRef = useRef<HTMLButtonElement>(null);
   const wpRef = useRef<HTMLButtonElement>(null);
@@ -202,7 +224,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
   const heldCount = swimmingRecords.filter(r => r.held).length;
   const valenciaCount = swimmingRecords.filter(r => r.held && r.year === 2026).length;
   const tournamentsSpanned = new Set(swimmingRecords.filter(r => r.held).map(r => r.tournament)).size;
-  const wpReigningCount = waterPoloTitles.filter(w => w.held).length;
+  const wpReigningCount = waterPoloResults.filter(w => w.held).length;
 
   return (
     <div className="view-enter" data-screen-label="Results">
@@ -244,12 +266,12 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
       <div className="section-head mb-6">
         <div>
           <h2 className="display display-3 font-normal text-ink">
-            {sport === 'swimming' ? 'Swimming records' : 'Water polo titles'}
+            {sport === 'swimming' ? 'Swimming records' : 'Water polo results'}
           </h2>
           <div className="sub text-xs text-ink-3 mt-1.5 leading-relaxed">
             {sport === 'swimming'
               ? 'Best-ever IGLA+ time for each event × age × gender. Coral ★ = the record still stands.'
-              : 'Most recent champion in each division by championship year.'}
+              : 'Standings and rankings in each division across all championship tournaments.'}
           </div>
         </div>
         
@@ -388,59 +410,113 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
 
       {/* WATER POLO SECTION */}
       {sport === 'wp' && (
-        <div className="record-list">
-          {waterPoloTitles.map((w) => {
-            const RowWrapper = w.clubId ? Link : 'div';
-            const isAdminUser = session?.role === 'admin';
-            return (
-              <RowWrapper
-                key={w.id}
-                href={w.clubId ? `/clubs/${w.clubId}` : '#'}
-                className={`record-row block no-underline transition-all ${w.held ? 'coral' : ''}`}
-                style={isAdminUser 
-                  ? { gridTemplateColumns: '32px 60px 1.2fr 1.2fr auto auto auto' } 
-                  : { gridTemplateColumns: '32px 60px 1.2fr 1.2fr auto auto' }}
-              >
-                <span className={`record-star flex items-center justify-center ${w.held ? 'held bg-coral text-white' : 'text-ink-3 bg-white'}`}>
-                  {w.held ? <Trophy size={11} /> : '·'}
-                </span>
-                <span className="display display-3 font-normal text-coral select-none leading-none pr-3">{w.division}</span>
-                <div>
-                  <div className="r-event text-sm font-bold text-ink">{w.champion}</div>
-                  <div className="r-cat text-[11px] text-ink-3 mt-0.5">Division {w.division} champion</div>
-                </div>
-                <div className="r-who text-xs text-ink-3 flex items-center gap-2">
-                  <span className="text-base leading-none select-none">{w.flag}</span>
-                  <div className="min-w-0">
-                    <p className="truncate">{w.tournament}</p>
-                    {w.score && (
-                      <p className="text-[10px] text-ink-2 mt-0.5 tabular-nums">
-                        final: <span className="font-semibold text-ink">{w.score}</span>
-                      </p>
+        <>
+          {/* Filters Dashboard for Water Polo */}
+          <div className="filter-row gap-3 mb-6">
+            <div className="search flex-1 min-w-[220px]">
+              <Search size={15} className="text-ink-2" />
+              <input
+                placeholder="Search team, club, or tournament…"
+                value={wpSearch}
+                onChange={e => setWpSearch(e.target.value)}
+                className="w-full text-xs text-ink placeholder-ink-3 focus:outline-none"
+              />
+              {wpSearch && (
+                <button className="search-clear cursor-pointer" onClick={() => setWpSearch('')} aria-label="Clear">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <SimpleSelect value={wpDivision} onChange={setWpDivision} options={[
+              { v: 'all', label: 'All divisions' },
+              { v: 'A', label: 'Division A' },
+              { v: 'B', label: 'Division B' },
+              { v: 'C', label: 'Division C' },
+            ]} />
+
+            <div className="results-meta text-xs text-ink-3 tabular-nums ml-auto select-none">
+              <span className="font-semibold">{filteredWP.length}</span> results
+            </div>
+          </div>
+
+          {filteredWP.length === 0 ? (
+            <div className="empty flex flex-col items-center justify-center p-12 text-center bg-white/40 border-2 border-dashed border-ink/20 rounded-2xl">
+              <Search size={28} className="text-ink-3 mb-3" />
+              <h3 className="font-bold text-ink text-base">No results match</h3>
+              <p className="text-xs text-ink-3 mt-1">Adjust the filters or clear them to see everything.</p>
+            </div>
+          ) : (
+            <div className="record-list">
+              {filteredWP.map((w) => {
+                const isAdminUser = session?.role === 'admin';
+                return (
+                  <div
+                    key={w.id}
+                    onClick={() => {
+                      if (w.tournamentId) {
+                        router.push(`/tournaments/${w.tournamentId}?sport=wp`);
+                      }
+                    }}
+                    className={`record-row transition-all ${w.held ? 'coral' : ''}`}
+                    style={isAdminUser 
+                      ? { gridTemplateColumns: '42px 60px 1.2fr 1.2fr auto auto auto', cursor: 'pointer' } 
+                      : { gridTemplateColumns: '42px 60px 1.2fr 1.2fr auto auto', cursor: 'pointer' }}
+                  >
+                    <span className={`place-badge flex items-center justify-center select-none ${
+                      w.placement === 1 ? 'place-1' : w.placement === 2 ? 'place-2' : w.placement === 3 ? 'place-3' : 'place-other'
+                    }`}>
+                      {w.placement}
+                    </span>
+                    <span className="display display-3 font-normal text-coral select-none leading-none pr-3">
+                      {w.division}
+                    </span>
+                    <div>
+                      <div className="r-event text-sm font-bold text-ink">{w.teamName}</div>
+                      <div className="r-cat text-[11px] text-ink-3 mt-0.5">
+                        Club:{' '}
+                        {w.clubId ? (
+                          <Link 
+                            href={`/clubs/${w.clubId}`}
+                            className="font-semibold text-ink hover:text-coral transition-colors underline decoration-dotted hover:decoration-solid"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevents triggering row click
+                            }}
+                          >
+                            {w.clubName || w.teamName}
+                          </Link>
+                        ) : (
+                          <span className="font-semibold text-ink">{w.clubName || w.teamName}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-ink-3 flex items-center gap-1.5 select-none">
+                      <span className="text-base leading-none">{w.flag}</span>
+                      <span>{w.tournament}</span>
+                    </div>
+                    <div className="r-time font-mono font-semibold text-xs tabular-nums text-ink pr-3">{w.year}</div>
+                    <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2 py-0.5 border border-ink/10 rounded-full select-none">
+                      &apos;{String(w.year).slice(2)}
+                    </span>
+                    {isAdminUser && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingRecord({ type: 'wp', data: w });
+                        }}
+                        className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg"
+                        title="Edit Water Polo Result"
+                      >
+                        <Edit3 size={12} />
+                      </button>
                     )}
                   </div>
-                </div>
-                <div className="r-time font-mono font-semibold text-xs tabular-nums text-ink pr-3">{w.year}</div>
-                <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2 py-0.5 border border-ink/10 rounded-full">
-                  &apos;{String(w.year).slice(2)}
-                </span>
-                {isAdminUser && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setEditingRecord({ type: 'wp', data: w });
-                    }}
-                    className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg"
-                    title="Edit Water Polo Title"
-                  >
-                    <Edit3 size={12} />
-                  </button>
-                )}
-              </RowWrapper>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* REUSABLE SWIMMING RECORD EDIT MODAL */}
@@ -466,7 +542,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
               <div className="flex items-center gap-2">
                 <Trophy size={18} className="text-coral" />
                 <h3 className="font-display text-xl font-bold text-ink">
-                  Edit Water Polo Title
+                  Edit Water Polo Result
                 </h3>
               </div>
               <button 
@@ -520,6 +596,18 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles, athlet
                     required
                   />
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Placement (Rank)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={editFields.final_placement || 1} 
+                  onChange={e => updateField('final_placement', parseInt(e.target.value) || 1)}
+                  className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                  required
+                />
               </div>
 
               {/* BEAUTIFUL AUDIT TRAIL LOG */}
