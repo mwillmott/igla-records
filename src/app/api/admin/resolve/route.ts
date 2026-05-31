@@ -30,9 +30,9 @@ export async function POST(request: Request) {
       const insertResult = db.prepare(`
         INSERT INTO swimming_results (
           id, athlete_id, club_id, tournament_id, event, course, age_category, gender_category, time, place,
-          is_all_time_record, record_still_held
+          is_all_time_record, record_still_held, created_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       // Helper to generate unique ID
@@ -59,7 +59,8 @@ export async function POST(request: Request) {
           uploaded.time,
           parseInt(uploaded.place) || 1,
           isRecord,
-          isRecord // if it is set as record_broken, it is currently held
+          isRecord, // if it is set as record_broken, it is currently held
+          session.email
         );
 
         if (isRecord) {

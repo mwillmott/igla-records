@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import db from '@/db';
 import AthleteProfileClient from './AthleteProfileClient';
 
@@ -10,6 +11,7 @@ interface PageProps {
 
 export default async function AthleteDetailPage({ params }: PageProps) {
   const { id } = await params;
+  const session = await getSession();
   
   // 1. Fetch athlete base profile
   const athlete = db.prepare(`
@@ -30,15 +32,24 @@ export default async function AthleteDetailPage({ params }: PageProps) {
       r.event,
       r.course,
       r.age_category AS category,
+      r.gender_category AS gender,
       r.time,
       r.place,
       r.is_all_time_record AS record,
+      r.record_still_held AS held,
+      r.created_by,
+      r.created_at,
+      r.updated_by,
+      r.updated_at,
       t.name AS tournament,
       t.id AS tournament_id,
       t.flag,
-      t.year
+      t.year,
+      ab.name AS brokenBy,
+      ab.id AS brokenById
     FROM swimming_results r
     JOIN tournaments t ON r.tournament_id = t.id
+    LEFT JOIN athletes ab ON r.broken_by_athlete_id = ab.id
     WHERE r.athlete_id = ?
     ORDER BY t.year DESC, r.event ASC
   `).all(id) as any[];
@@ -105,10 +116,17 @@ export default async function AthleteDetailPage({ params }: PageProps) {
 
   const timeline = Array.from(timelineMap.values()).sort((a, b) => b.year - a.year);
 
+  // 5. Fetch all athletes for editing dropdown selectors
+  const athletes = db.prepare(`
+    SELECT id, name FROM athletes ORDER BY name ASC
+  `).all();
+
   return (
     <AthleteProfileClient 
       athlete={athlete} 
       timeline={timeline} 
+      athletes={athletes as any[]}
+      session={session}
     />
   );
 }

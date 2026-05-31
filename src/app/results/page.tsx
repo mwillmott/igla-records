@@ -1,9 +1,12 @@
+import { getSession } from '@/lib/auth';
 import db from '@/db';
 import ResultsClient from './ResultsClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ResultsPage() {
+  const session = await getSession();
+
   // 1. Fetch swimming records from relational DB
   const swimmingRecords = db.prepare(`
     SELECT 
@@ -15,6 +18,10 @@ export default async function ResultsPage() {
       r.time, 
       r.place,
       r.record_still_held AS held,
+      r.created_by,
+      r.created_at,
+      r.updated_by,
+      r.updated_at,
       a.id AS athleteId,
       a.name AS athlete,
       c.name AS club,
@@ -22,7 +29,8 @@ export default async function ResultsPage() {
       t.name AS tournament,
       t.flag,
       t.year,
-      ab.name AS brokenBy
+      ab.name AS brokenBy,
+      ab.id AS brokenById
     FROM swimming_results r
     LEFT JOIN athletes a ON r.athlete_id = a.id
     JOIN clubs c ON r.club_id = c.id
@@ -43,6 +51,10 @@ export default async function ResultsPage() {
       t.team_name AS champion, 
       t.club_id AS clubId, 
       t.score,
+      t.created_by,
+      t.created_at,
+      t.updated_by,
+      t.updated_at,
       (t.final_placement = 1 AND trn.year = 2026) AS held
     FROM water_polo_teams t
     JOIN tournaments trn ON t.tournament_id = trn.id
@@ -50,10 +62,17 @@ export default async function ResultsPage() {
     ORDER BY trn.year DESC, t.division ASC
   `).all();
 
+  // 3. Fetch all athletes for editing dropdown selectors
+  const athletes = db.prepare(`
+    SELECT id, name FROM athletes ORDER BY name ASC
+  `).all();
+
   return (
     <ResultsClient 
       swimmingRecords={swimmingRecords as any[]} 
       waterPoloTitles={waterPoloTitles as any[]} 
+      athletes={athletes as any[]}
+      session={session}
     />
   );
 }

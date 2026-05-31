@@ -90,6 +90,10 @@ CREATE TABLE IF NOT EXISTS swimming_results (
     is_all_time_record BOOLEAN NOT NULL DEFAULT 0,
     record_still_held BOOLEAN NOT NULL DEFAULT 0,
     broken_by_athlete_id TEXT,
+    created_by TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_by TEXT,
+    updated_at TEXT,
     FOREIGN KEY (athlete_id) REFERENCES athletes(id) ON DELETE SET NULL,
     FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE,
     FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
@@ -110,6 +114,10 @@ CREATE TABLE IF NOT EXISTS water_polo_teams (
     goals_against INTEGER,
     points INTEGER,
     score TEXT,
+    created_by TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_by TEXT,
+    updated_at TEXT,
     FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
     FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
 );

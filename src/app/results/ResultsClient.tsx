@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Waves, Search, Sparkles, Trophy, X, ChevronDown, Award } from 'lucide-react';
+import { Waves, Search, Sparkles, Trophy, X, ChevronDown, Award, Edit3, Save, ShieldAlert, Clock } from 'lucide-react';
+import EditResultModal from '../components/EditResultModal';
+import { UserSession } from '@/lib/auth';
 
 interface SwimRecord {
   id: string;
@@ -13,6 +16,10 @@ interface SwimRecord {
   time: string;
   place: number;
   held: number;
+  created_by: string | null;
+  created_at: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
   athleteId: string | null;
   athlete: string;
   club: string;
@@ -21,6 +28,7 @@ interface SwimRecord {
   flag: string;
   year: number;
   brokenBy: string | null;
+  brokenById: string | null;
 }
 
 interface WPTitle {
@@ -32,21 +40,129 @@ interface WPTitle {
   champion: string;
   clubId: string;
   score: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
   held: number;
 }
 
 interface ResultsClientProps {
   swimmingRecords: SwimRecord[];
   waterPoloTitles: WPTitle[];
+  athletes: { id: string; name: string }[];
+  session: UserSession | null;
 }
 
-export default function ResultsClient({ swimmingRecords, waterPoloTitles }: ResultsClientProps) {
+export default function ResultsClient({ swimmingRecords, waterPoloTitles, athletes, session }: ResultsClientProps) {
   const [sport, setSport] = useState<'swimming' | 'wp'>('swimming');
   const [search, setSearch] = useState('');
   const [age, setAge] = useState('all');
   const [gender, setGender] = useState('all');
   const [course, setCourse] = useState('all');
   const [heldOnly, setHeldOnly] = useState(true);
+
+  // Administrative Record Edit States
+  const [editingRecord, setEditingRecord] = useState<{
+    type: 'swimming' | 'wp';
+    data: any;
+  } | null>(null);
+  const [editFields, setEditFields] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Initialize form fields when edit modal is opened
+  useEffect(() => {
+    if (editingRecord) {
+      setEditError('');
+      if (editingRecord.type === 'swimming') {
+        setEditFields({
+          event: editingRecord.data.event,
+          course: editingRecord.data.course,
+          age_category: editingRecord.data.age,
+          gender_category: editingRecord.data.gender,
+          time: editingRecord.data.time,
+          place: editingRecord.data.place,
+          is_all_time_record: true,
+          record_still_held: editingRecord.data.held === 1,
+          athlete_id: editingRecord.data.athleteId || '',
+          broken_by_athlete_id: editingRecord.data.brokenById || '',
+        });
+      } else {
+        setEditFields({
+          team_name: editingRecord.data.champion,
+          score: editingRecord.data.score || '',
+          division: editingRecord.data.division,
+          final_placement: 1,
+        });
+      }
+    }
+  }, [editingRecord]);
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+
+    setSaving(true);
+    setEditError('');
+
+    try {
+      const response = await fetch('/api/admin/records/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: editingRecord.type,
+          id: editingRecord.data.id,
+          fields: editFields,
+        }),
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        setEditError(resData.error || 'Failed to update record.');
+        setSaving(false);
+        return;
+      }
+
+      setEditingRecord(null);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      setEditError('An unexpected network error occurred.');
+      setSaving(false);
+    }
+  };
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return 'N/A';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        return dateStr;
+      }
+      return d.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const updateField = (field: string, value: any) => {
+    setEditFields((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   // Compute unique age options from database
   const ageOptions = useMemo(() => {
@@ -221,11 +337,13 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles }: Resu
             <div className="record-list">
               {filteredSwim.map((r) => {
                 const RowWrapper = r.athleteId ? Link : 'div';
+                const isAdminUser = session?.role === 'admin';
                 return (
                   <RowWrapper
                     key={r.id}
                     href={r.athleteId ? `/athletes/${r.athleteId}` : '#'}
                     className={`record-row block no-underline transition-all ${r.held ? 'coral' : ''}`}
+                    style={isAdminUser ? { gridTemplateColumns: '32px minmax(140px, 1.4fr) minmax(110px, 1fr) minmax(160px, 1.5fr) auto auto auto' } : undefined}
                   >
                     <span className={`record-star flex items-center justify-center ${r.held ? 'held bg-coral text-white' : 'text-ink-3 bg-white'}`}>
                       {r.held ? <Sparkles size={11} /> : '·'}
@@ -247,6 +365,19 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles }: Resu
                     <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2 py-0.5 border border-ink/10 rounded-full">
                       &apos;{String(r.year).slice(2)}
                     </span>
+                    {isAdminUser && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingRecord({ type: 'swimming', data: r });
+                        }}
+                        className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg"
+                        title="Edit Swim Record"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                    )}
                   </RowWrapper>
                 );
               })}
@@ -260,12 +391,15 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles }: Resu
         <div className="record-list">
           {waterPoloTitles.map((w) => {
             const RowWrapper = w.clubId ? Link : 'div';
+            const isAdminUser = session?.role === 'admin';
             return (
               <RowWrapper
                 key={w.id}
                 href={w.clubId ? `/clubs/${w.clubId}` : '#'}
                 className={`record-row block no-underline transition-all ${w.held ? 'coral' : ''}`}
-                style={{ gridTemplateColumns: '32px 60px 1.2fr 1.2fr auto auto' }}
+                style={isAdminUser 
+                  ? { gridTemplateColumns: '32px 60px 1.2fr 1.2fr auto auto auto' } 
+                  : { gridTemplateColumns: '32px 60px 1.2fr 1.2fr auto auto' }}
               >
                 <span className={`record-star flex items-center justify-center ${w.held ? 'held bg-coral text-white' : 'text-ink-3 bg-white'}`}>
                   {w.held ? <Trophy size={11} /> : '·'}
@@ -290,10 +424,159 @@ export default function ResultsClient({ swimmingRecords, waterPoloTitles }: Resu
                 <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2 py-0.5 border border-ink/10 rounded-full">
                   &apos;{String(w.year).slice(2)}
                 </span>
+                {isAdminUser && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setEditingRecord({ type: 'wp', data: w });
+                    }}
+                    className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg"
+                    title="Edit Water Polo Title"
+                  >
+                    <Edit3 size={12} />
+                  </button>
+                )}
               </RowWrapper>
             );
           })}
         </div>
+      )}
+
+      {/* REUSABLE SWIMMING RECORD EDIT MODAL */}
+      <EditResultModal
+        isOpen={editingRecord?.type === 'swimming'}
+        onClose={() => setEditingRecord(null)}
+        recordData={editingRecord?.data}
+        athletes={athletes}
+        session={session}
+        onSaveSuccess={() => {
+          setEditingRecord(null);
+          window.location.reload();
+        }}
+      />
+
+      {/* WATER POLO EDIT MODAL */}
+      {mounted && editingRecord?.type === 'wp' && createPortal(
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
+          <div className="tile max-w-lg w-full bg-white border-2 border-ink shadow-[5px_6px_0_#0d3a52] overflow-hidden flex flex-col max-h-[90vh] rounded-2xl animate-scaleUp">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b-2 border-ink bg-aqua-sky/30 flex justify-between items-center select-none">
+              <div className="flex items-center gap-2">
+                <Trophy size={18} className="text-coral" />
+                <h3 className="font-display text-xl font-bold text-ink">
+                  Edit Water Polo Title
+                </h3>
+              </div>
+              <button 
+                onClick={() => setEditingRecord(null)}
+                className="w-8 h-8 rounded-full border-2 border-ink bg-white flex items-center justify-center text-ink hover:bg-coral-pale hover:text-coral transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 text-left">
+              {editError && (
+                <div className="p-3.5 bg-coral-pale border-2 border-coral rounded-xl text-xs font-semibold text-coral-deep flex items-start gap-2">
+                  <ShieldAlert size={15} className="shrink-0 mt-0.5" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Champion Team Name</label>
+                <input 
+                  type="text" 
+                  value={editFields.team_name || ''} 
+                  onChange={e => updateField('team_name', e.target.value)}
+                  className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Match Score</label>
+                  <input 
+                    type="text" 
+                    value={editFields.score || ''} 
+                    onChange={e => updateField('score', e.target.value)}
+                    className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-mono font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    placeholder="e.g. 12-8 (optional)"
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Division</label>
+                  <input 
+                    type="text" 
+                    value={editFields.division || ''} 
+                    onChange={e => updateField('division', e.target.value)}
+                    className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* BEAUTIFUL AUDIT TRAIL LOG */}
+              <div className="p-4 bg-aqua-sky/15 border-2 border-dashed border-ink/20 rounded-2xl flex flex-col gap-2.5 mt-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-ink flex items-center gap-1 leading-none select-none">
+                  <Clock size={11} className="text-coral" />
+                  <span>Audit History Trail</span>
+                </div>
+                
+                <div className="text-xs flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center text-[11px] text-ink-2">
+                    <span>Originally Created By:</span>
+                    <span className="font-semibold text-ink">{editingRecord.data.created_by || 'system@igla.org'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-ink-3 font-mono leading-none">
+                    <span>Timestamp:</span>
+                    <span>{formatDate(editingRecord.data.created_at)}</span>
+                  </div>
+                  
+                  {editingRecord.data.updated_by && (
+                    <>
+                      <div className="h-[1.5px] border-t border-dashed border-ink/20 my-1" />
+                      <div className="flex justify-between items-center text-[11px] text-ink-2">
+                        <span>Last Updated By:</span>
+                        <span className="font-semibold text-coral">{editingRecord.data.updated_by}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-ink-3 font-mono leading-none">
+                        <span>Timestamp:</span>
+                        <span>{formatDate(editingRecord.data.updated_at)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 justify-end pt-4 border-t border-ink/10 select-none">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Save size={13} />
+                  <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -2,7 +2,9 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Globe, ChevronDown, Trophy, Waves, Search, Sparkles, X, Users, Target } from 'lucide-react';
+import { Calendar, MapPin, Globe, ChevronDown, Trophy, Waves, Search, Sparkles, X, Users, Target, Edit3 } from 'lucide-react';
+import EditResultModal from '../../components/EditResultModal';
+import { UserSession } from '@/lib/auth';
 
 interface Tournament {
   id: string;
@@ -32,11 +34,18 @@ interface SwimResult {
   time: string;
   place: number;
   record: number;
+  held: number;
+  created_by: string | null;
+  created_at: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
   athleteId: string | null;
   athlete: string;
   club: string;
   clubId: string;
   year: number;
+  brokenBy: string | null;
+  brokenById: string | null;
 }
 
 interface WPPlayer {
@@ -71,6 +80,8 @@ interface TournamentDetailClientProps {
   hasData: boolean;
   swimmingResults: SwimResult[];
   waterPoloDivisions: WPDivision[];
+  athletes: { id: string; name: string }[];
+  session: UserSession | null;
 }
 
 export default function TournamentDetailClient({
@@ -78,8 +89,11 @@ export default function TournamentDetailClient({
   hasData,
   swimmingResults,
   waterPoloDivisions,
+  athletes,
+  session,
 }: TournamentDetailClientProps) {
   const [sport, setSport] = useState<'swimming' | 'wp'>('swimming');
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
 
   // Swimming Subcomponent State
   const [swimSearch, setSwimSearch] = useState('');
@@ -308,47 +322,65 @@ export default function TournamentDetailClient({
                 </div>
               ) : (
                 <div className="record-list">
-                  {filteredSwim.map((r) => (
-                    <div
-                      key={r.id}
-                      className={`record-row block no-underline select-none transition-all ${r.record ? 'coral' : ''}`}
-                      style={{ gridTemplateColumns: '32px minmax(170px, 1.3fr) minmax(140px, 1fr) minmax(160px, 1.3fr) auto auto', cursor: 'default' }}
-                    >
-                      <span className={`place-badge flex items-center justify-center select-none ${
-                        r.place === 1 ? 'place-1' : r.place === 2 ? 'place-2' : r.place === 3 ? 'place-3' : 'place-other'
-                      }`}>
-                        {r.place}
-                      </span>
-                      
-                      <div>
-                        <div className="r-event text-sm font-bold text-ink">{r.event}</div>
-                        <div className="r-cat text-[11px] text-ink-3 mt-0.5">{r.age} · {r.gender}</div>
-                        <span className="r-course text-[10px] uppercase font-mono tracking-wider mt-1 px-1.5 py-0.5 bg-bg-2 border border-ink/10 rounded">{r.course}</span>
-                      </div>
-                      
-                      <div className="r-who">
-                        {r.athleteId ? (
-                          <Link href={`/athletes/${r.athleteId}`} className="athlete font-semibold text-ink hover:text-coral transition-colors">
-                            {r.athlete}
-                          </Link>
-                        ) : (
-                          <span className="athlete font-semibold text-ink cursor-default">{r.athlete}</span>
+                  {filteredSwim.map((r) => {
+                    const isAdminUser = session?.role === 'admin';
+                    return (
+                      <div
+                        key={r.id}
+                        className={`record-row block no-underline select-none transition-all ${r.record ? 'coral' : ''}`}
+                        style={isAdminUser 
+                          ? { gridTemplateColumns: '32px minmax(170px, 1.3fr) minmax(140px, 1fr) minmax(160px, 1.3fr) auto auto auto', cursor: 'default' } 
+                          : { gridTemplateColumns: '32px minmax(170px, 1.3fr) minmax(140px, 1fr) minmax(160px, 1.3fr) auto auto', cursor: 'default' }}
+                      >
+                        <span className={`place-badge flex items-center justify-center select-none ${
+                          r.place === 1 ? 'place-1' : r.place === 2 ? 'place-2' : r.place === 3 ? 'place-3' : 'place-other'
+                        }`}>
+                          {r.place}
+                        </span>
+                        
+                        <div>
+                          <div className="r-event text-sm font-bold text-ink">{r.event}</div>
+                          <div className="r-cat text-[11px] text-ink-3 mt-0.5">{r.age} · {r.gender}</div>
+                          <span className="r-course text-[10px] uppercase font-mono tracking-wider mt-1 px-1.5 py-0.5 bg-bg-2 border border-ink/10 rounded">{r.course}</span>
+                        </div>
+                        
+                        <div className="r-who">
+                          {r.athleteId ? (
+                            <Link href={`/athletes/${r.athleteId}`} className="athlete font-semibold text-ink hover:text-coral transition-colors">
+                              {r.athlete}
+                            </Link>
+                          ) : (
+                            <span className="athlete font-semibold text-ink cursor-default">{r.athlete}</span>
+                          )}
+                          <div className="text-[11px] text-ink-3 mt-0.5">{r.club}</div>
+                        </div>
+                        
+                        <div className="text-xs text-ink-3 select-none flex items-center">
+                          {r.record === 1 && (
+                            <span className="status-pill live flex items-center bg-coral text-white font-bold py-0.5 px-2 rounded-full border border-ink text-[9px] uppercase tracking-wider">
+                              ★ New record
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="r-time font-mono font-semibold text-sm tabular-nums text-ink mr-2">{r.time}</div>
+                        <span style={{ width: 8 }}></span>
+                        {isAdminUser && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEditingRecord(r);
+                            }}
+                            className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg"
+                            title="Edit Swim Record"
+                          >
+                            <Edit3 size={12} />
+                          </button>
                         )}
-                        <div className="text-[11px] text-ink-3 mt-0.5">{r.club}</div>
                       </div>
-                      
-                      <div className="text-xs text-ink-3 select-none flex items-center">
-                        {r.record === 1 && (
-                          <span className="status-pill live flex items-center bg-coral text-white font-bold py-0.5 px-2 rounded-full border border-ink text-[9px] uppercase tracking-wider">
-                            ★ New record
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="r-time font-mono font-semibold text-sm tabular-nums text-ink mr-2">{r.time}</div>
-                      <span style={{ width: 8 }}></span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -480,6 +512,19 @@ export default function TournamentDetailClient({
           )}
         </>
       )}
+
+      {/* REUSABLE SWIMMING RECORD EDIT MODAL */}
+      <EditResultModal
+        isOpen={editingRecord !== null}
+        onClose={() => setEditingRecord(null)}
+        recordData={editingRecord}
+        athletes={athletes}
+        session={session}
+        onSaveSuccess={() => {
+          setEditingRecord(null);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

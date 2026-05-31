@@ -2,7 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Waves, Target, Sparkles, Hash, MapPin, Calendar, CheckCircle, UserPlus, Share, ArrowLeft } from 'lucide-react';
+import { Waves, Target, Sparkles, Hash, MapPin, Calendar, CheckCircle, UserPlus, Share, ArrowLeft, Edit3 } from 'lucide-react';
+import EditResultModal from '../../components/EditResultModal';
+import { UserSession } from '@/lib/auth';
 
 interface Athlete {
   id: string;
@@ -20,9 +22,17 @@ interface SwimTimelineEntry {
   event: string;
   course: 'LCM' | 'SCM';
   category: string;
+  gender: string;
   time: string;
   place: number;
   record: number;
+  held: number;
+  created_by: string | null;
+  created_at: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+  brokenBy: string | null;
+  brokenById: string | null;
 }
 
 interface WPTimelineEntry {
@@ -46,6 +56,8 @@ interface TimelineEntry {
 interface AthleteProfileClientProps {
   athlete: Athlete;
   timeline: TimelineEntry[];
+  athletes: { id: string; name: string }[];
+  session: UserSession | null;
 }
 
 function placeSuffix(p: number): string {
@@ -57,9 +69,10 @@ function placeSuffix(p: number): string {
   return 'th';
 }
 
-export default function AthleteProfileClient({ athlete, timeline }: AthleteProfileClientProps) {
+export default function AthleteProfileClient({ athlete, timeline, athletes, session }: AthleteProfileClientProps) {
   const [claimed, setClaimed] = useState(athlete.is_claimed === 1);
   const [shareText, setShareText] = useState('Share');
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
 
   // Claim Profile Click simulation
   const handleClaim = () => {
@@ -233,7 +246,11 @@ export default function AthleteProfileClient({ athlete, timeline }: AthleteProfi
                   </div>
                   
                   {entry.swimming.map((e, j) => (
-                    <div key={j} className="tl-event">
+                    <div 
+                      key={j} 
+                      className="tl-event"
+                      style={session?.role === 'admin' ? { gridTemplateColumns: '1fr auto auto auto auto' } : undefined}
+                    >
                       <div>
                         <div className="ev-name text-ink">{e.event}</div>
                         <div className="ev-cat text-[11px] text-ink-3 mt-0.5">{e.category}</div>
@@ -258,6 +275,16 @@ export default function AthleteProfileClient({ athlete, timeline }: AthleteProfi
                           </span>
                         )}
                       </div>
+
+                      {session?.role === 'admin' && (
+                        <button
+                          onClick={() => setEditingRecord({ ...e, athleteId: athlete.id, athlete: athlete.name })}
+                          className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg"
+                          title="Edit Swim Record"
+                        >
+                          <Edit3 size={12} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -302,6 +329,19 @@ export default function AthleteProfileClient({ athlete, timeline }: AthleteProfi
           </div>
         ))}
       </div>
+
+      {/* REUSABLE SWIMMING RECORD EDIT MODAL */}
+      <EditResultModal
+        isOpen={editingRecord !== null}
+        onClose={() => setEditingRecord(null)}
+        recordData={editingRecord}
+        athletes={athletes}
+        session={session}
+        onSaveSuccess={() => {
+          setEditingRecord(null);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

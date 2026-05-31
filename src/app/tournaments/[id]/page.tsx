@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import db from '@/db';
 import TournamentDetailClient from './TournamentDetailClient';
 
@@ -10,6 +11,7 @@ interface PageProps {
 
 export default async function TournamentDetailPage({ params }: PageProps) {
   const { id } = await params;
+  const session = await getSession();
   
   // 1. Fetch tournament details
   const tournament = db.prepare(`
@@ -39,27 +41,35 @@ export default async function TournamentDetailPage({ params }: PageProps) {
         r.time, 
         r.place,
         r.is_all_time_record AS record,
+        r.record_still_held AS held,
+        r.created_by,
+        r.created_at,
+        r.updated_by,
+        r.updated_at,
         a.id AS athleteId,
         a.name AS athlete,
         c.name AS club,
         c.id AS clubId,
         t.name AS tournament,
         t.flag,
-        t.year
+        t.year,
+        ab.name AS brokenBy,
+        ab.id AS brokenById
       FROM swimming_results r
       LEFT JOIN athletes a ON r.athlete_id = a.id
       JOIN clubs c ON r.club_id = c.id
       JOIN tournaments t ON r.tournament_id = t.id
-      WHERE r.tournament_id = 'valencia-2026'
+      LEFT JOIN athletes ab ON r.broken_by_athlete_id = ab.id
+      WHERE r.tournament_id = ?
       ORDER BY r.event ASC, r.age_category ASC, r.gender_category ASC, r.place ASC
-    `).all();
+    `).all(id);
 
     // 3. Fetch water polo standings and build divisions structures
     const wpTeams = db.prepare(`
       SELECT * FROM water_polo_teams 
-      WHERE tournament_id = 'valencia-2026' 
+      WHERE tournament_id = ? 
       ORDER BY division ASC, final_placement ASC
-    `).all() as any[];
+    `).all(id) as any[];
 
     const divisionsMap = new Map<string, { id: string; name: string; subtitle: string; standings: any[] }>();
     
@@ -111,12 +121,19 @@ export default async function TournamentDetailPage({ params }: PageProps) {
     waterPoloDivisions = Array.from(divisionsMap.values()).sort((a, b) => a.id.localeCompare(b.id));
   }
 
+  // 4. Fetch all athletes for editing dropdown selectors
+  const athletes = db.prepare(`
+    SELECT id, name FROM athletes ORDER BY name ASC
+  `).all();
+
   return (
     <TournamentDetailClient
       tournament={tournament}
       hasData={hasData}
       swimmingResults={swimmingResults}
       waterPoloDivisions={waterPoloDivisions}
+      athletes={athletes as any[]}
+      session={session}
     />
   );
 }
