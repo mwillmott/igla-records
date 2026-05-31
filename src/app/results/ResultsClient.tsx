@@ -610,7 +610,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
 
               {/* SEARCHABLE CLUB SELECT COMBOBOX */}
               <div className="flex flex-col gap-1.5 relative" ref={clubDropdownRef}>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Sponsoring Club</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Club</label>
                 <div className="relative">
                   <input 
                     type="text" 
