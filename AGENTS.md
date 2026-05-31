@@ -42,7 +42,7 @@ The developer will explicitly dictate or imply one of two modes at the start of 
 
 ## 3. Wrap-Up & Git Protocol
 
-When the developer indicates they are happy with the feature or fix, wrap up the conversation by automating the source control step:
+Only perform the source control step (git commit and push) when specifically and explicitly instructed to do so by the developer. When instructed:
 1. Run a quick project build or type-check to guarantee zero compilation errors.
 2. Stage all relevant files (ensuring no temporary debug junk is included).
 3. Write a clear, professional commit message using **Conventional Commits** formatting (e.g., `feat(ui): add loading state`, `fix(auth): handle token expiration`).
