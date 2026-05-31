@@ -420,7 +420,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     </div>
                     <div className="r-time font-mono font-semibold text-sm tabular-nums text-ink">{r.time}</div>
                     <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2 py-0.5 border border-ink/10 rounded-full">
-                      &apos;{String(r.year).slice(2)}
+                      {r.year}
                     </span>
                     {isAdminUser && (
                       <button
@@ -493,16 +493,13 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     }}
                     className={`record-row transition-all ${w.held ? 'coral' : ''}`}
                     style={isAdminUser 
-                      ? { gridTemplateColumns: '42px 60px 1.2fr 1.2fr auto auto auto', cursor: 'pointer' } 
-                      : { gridTemplateColumns: '42px 60px 1.2fr 1.2fr auto auto', cursor: 'pointer' }}
+                      ? { gridTemplateColumns: '42px 1.4fr 1.4fr auto auto', cursor: 'pointer' } 
+                      : { gridTemplateColumns: '42px 1.4fr 1.4fr auto', cursor: 'pointer' }}
                   >
                     <span className={`place-badge flex items-center justify-center select-none ${
                       w.placement === 1 ? 'place-1' : w.placement === 2 ? 'place-2' : w.placement === 3 ? 'place-3' : 'place-other'
                     }`}>
                       {w.placement}
-                    </span>
-                    <span className="display display-3 font-normal text-coral select-none leading-none pr-3">
-                      {w.division}
                     </span>
                     <div>
                       <div className="r-event text-sm font-bold text-ink">{w.teamName}</div>
@@ -523,13 +520,17 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-ink-3 flex items-center gap-1.5 select-none">
-                      <span className="text-base leading-none">{w.flag}</span>
-                      <span>{w.tournament}</span>
+                    <div className="text-xs text-ink-3 flex flex-col justify-center gap-1 select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base leading-none">{w.flag}</span>
+                        <span className="font-semibold">{w.tournament}</span>
+                      </div>
+                      <div className="text-[11px] text-ink-3">
+                        Division: <span className="font-bold text-coral">{w.division}</span>
+                      </div>
                     </div>
-                    <div className="r-time font-mono font-semibold text-xs tabular-nums text-ink pr-3">{w.year}</div>
-                    <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2 py-0.5 border border-ink/10 rounded-full select-none">
-                      &apos;{String(w.year).slice(2)}
+                    <span className="r-year font-mono text-[10px] text-ink-2 bg-bg px-2.5 py-0.5 border border-ink/10 rounded-full select-none">
+                      {w.year}
                     </span>
                     {isAdminUser && (
                       <button
