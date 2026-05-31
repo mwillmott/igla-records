@@ -687,7 +687,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     <input 
                       type="number" 
                       min="0"
-                      value={editFields.wins === '' ? '' : editFields.wins} 
+                      value={editFields.wins ?? ''} 
                       onChange={e => updateField('wins', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                       className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
                     />
@@ -697,7 +697,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     <input 
                       type="number" 
                       min="0"
-                      value={editFields.losses === '' ? '' : editFields.losses} 
+                      value={editFields.losses ?? ''} 
                       onChange={e => updateField('losses', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                       className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
                     />
@@ -707,7 +707,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     <input 
                       type="number" 
                       min="0"
-                      value={editFields.goals_for === '' ? '' : editFields.goals_for} 
+                      value={editFields.goals_for ?? ''} 
                       onChange={e => updateField('goals_for', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                       className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
                     />
@@ -717,7 +717,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     <input 
                       type="number" 
                       min="0"
-                      value={editFields.goals_against === '' ? '' : editFields.goals_against} 
+                      value={editFields.goals_against ?? ''} 
                       onChange={e => updateField('goals_against', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                       className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
                     />
@@ -727,7 +727,7 @@ export default function ResultsClient({ swimmingRecords, waterPoloResults, athle
                     <input 
                       type="number" 
                       min="0"
-                      value={editFields.points === '' ? '' : editFields.points} 
+                      value={editFields.points ?? ''} 
                       onChange={e => updateField('points', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                       className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
                     />
