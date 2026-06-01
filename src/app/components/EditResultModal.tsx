@@ -26,6 +26,8 @@ export default function EditResultModal({
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -35,6 +37,8 @@ export default function EditResultModal({
   useEffect(() => {
     if (isOpen && recordData) {
       setEditError('');
+      setConfirmDelete(false);
+      setDeleting(false);
       setEditFields({
         event: recordData.event,
         course: recordData.course,
@@ -49,6 +53,42 @@ export default function EditResultModal({
       });
     }
   }, [isOpen, recordData]);
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+
+    setDeleting(true);
+    setEditError('');
+
+    try {
+      const response = await fetch('/api/admin/records/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'swimming',
+          id: recordData.id,
+        }),
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        setEditError(resData.error || 'Failed to delete record.');
+        setDeleting(false);
+        setConfirmDelete(false);
+        return;
+      }
+
+      onSaveSuccess();
+    } catch (err) {
+      console.error(err);
+      setEditError('An unexpected network error occurred.');
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
 
   if (!isOpen || !recordData) return null;
 
@@ -282,21 +322,62 @@ export default function EditResultModal({
 
           {/* Action buttons */}
           <div className="flex gap-3 justify-end pt-4 border-t border-ink/10 select-none">
-            <button
-              type="button"
-              onClick={onClose}
-              className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-            >
-              <Save size={13} />
-              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-            </button>
+            {confirmDelete ? (
+              <div className="flex gap-3 w-full justify-between items-center animate-fadeIn">
+                <span className="text-[11px] font-bold text-coral-deep uppercase tracking-wide">Are you absolutely sure? This cannot be undone.</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={handleDelete}
+                    className="pill danger font-bold text-xs py-2.5 px-5 cursor-pointer"
+                  >
+                    {deleting ? 'Deleting...' : 'Confirm Delete'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setConfirmDelete(false);
+                    }}
+                    className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-3 justify-between w-full">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="pill bg-white border-2 border-coral-deep text-coral-deep hover:bg-coral-pale font-bold text-xs py-2.5 px-4 rounded-full cursor-pointer"
+                >
+                  Delete Record
+                </button>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={saving}
+                    className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Save size={13} />
+                    <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </div>

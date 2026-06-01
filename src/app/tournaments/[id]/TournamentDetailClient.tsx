@@ -125,6 +125,8 @@ export default function TournamentDetailClient({
   const [wpSaving, setWpSaving] = useState(false);
   const [wpEditError, setWpEditError] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [wpConfirmDelete, setWpConfirmDelete] = useState(false);
+  const [wpDeleting, setWpDeleting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -164,6 +166,8 @@ export default function TournamentDetailClient({
   useEffect(() => {
     if (editingWpRecord) {
       setWpEditError('');
+      setWpConfirmDelete(false);
+      setWpDeleting(false);
       setEditWpFields({
         team_name: editingWpRecord.teamName || '',
         club_id: editingWpRecord.clubId || '',
@@ -178,6 +182,45 @@ export default function TournamentDetailClient({
       setClubSearch(editingWpRecord.clubName || '');
     }
   }, [editingWpRecord, clubs]);
+
+  const handleWpDelete = async () => {
+    if (!editingWpRecord) return;
+
+    if (!wpConfirmDelete) {
+      setWpConfirmDelete(true);
+      return;
+    }
+
+    setWpDeleting(true);
+    setWpEditError('');
+
+    try {
+      const response = await fetch('/api/admin/records/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'wp',
+          id: editingWpRecord.id,
+        }),
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        setWpEditError(resData.error || 'Failed to delete record.');
+        setWpDeleting(false);
+        setWpConfirmDelete(false);
+        return;
+      }
+
+      setEditingWpRecord(null);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      setWpEditError('An unexpected network error occurred.');
+      setWpDeleting(false);
+      setWpConfirmDelete(false);
+    }
+  };
 
   const handleSaveWpEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -905,21 +948,62 @@ export default function TournamentDetailClient({
 
               {/* Action buttons */}
               <div className="flex gap-3 justify-end pt-4 border-t border-ink/10 select-none">
-                <button
-                  type="button"
-                  onClick={() => setEditingWpRecord(null)}
-                  className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={wpSaving}
-                  className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-                >
-                  <Save size={13} />
-                  <span>{wpSaving ? 'Saving...' : 'Save Changes'}</span>
-                </button>
+                {wpConfirmDelete ? (
+                  <div className="flex gap-3 w-full justify-between items-center animate-fadeIn">
+                    <span className="text-[11px] font-bold text-coral-deep uppercase tracking-wide">Are you absolutely sure? This cannot be undone.</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={wpDeleting}
+                        onClick={handleWpDelete}
+                        className="pill danger font-bold text-xs py-2.5 px-5 cursor-pointer"
+                      >
+                        {wpDeleting ? 'Deleting...' : 'Confirm Delete'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={wpDeleting}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setWpConfirmDelete(false);
+                        }}
+                        className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-3 justify-between w-full">
+                    <button
+                      type="button"
+                      onClick={handleWpDelete}
+                      className="pill bg-white border-2 border-coral-deep text-coral-deep hover:bg-coral-pale font-bold text-xs py-2.5 px-4 rounded-full cursor-pointer"
+                    >
+                      Delete Result
+                    </button>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditingWpRecord(null)}
+                        disabled={wpSaving}
+                        className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={wpSaving}
+                        className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Save size={13} />
+                        <span>{wpSaving ? 'Saving...' : 'Save Changes'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
           </div>

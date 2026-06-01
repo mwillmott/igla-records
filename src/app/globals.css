@@ -246,6 +246,15 @@ input { font-family: inherit; }
 .pill.coral {
   background: var(--coral); color: white; border-color: var(--ink);
 }
+.pill.danger {
+  background: var(--coral-deep);
+  color: white;
+  border-color: var(--ink);
+}
+.pill.danger:hover {
+  background: #b5381a;
+  color: white;
+}
 .pill.aqua {
   background: var(--aqua); color: white;
 }
