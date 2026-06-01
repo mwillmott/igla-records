@@ -69,9 +69,11 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
 
     // 3. Fetch water polo standings and build divisions structures
     const wpTeams = db.prepare(`
-      SELECT * FROM water_polo_teams 
-      WHERE tournament_id = ? 
-      ORDER BY division ASC, final_placement ASC
+      SELECT t.*, c.name AS clubName
+      FROM water_polo_teams t
+      LEFT JOIN clubs c ON t.club_id = c.id
+      WHERE t.tournament_id = ? 
+      ORDER BY t.division ASC, t.final_placement ASC
     `).all(id) as any[];
 
     const divisionsMap = new Map<string, { id: string; name: string; subtitle: string; standings: any[] }>();
@@ -113,11 +115,17 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
         place: team.final_placement,
         teamId: team.id,
         team: team.team_name,
+        clubId: team.club_id,
+        clubName: team.clubName,
         wins: team.wins,
         losses: team.losses,
         goalsFor: team.goals_for,
         goalsAgainst: team.goals_against,
         points: team.points,
+        createdBy: team.created_by,
+        createdAt: team.created_at,
+        updatedBy: team.updated_by,
+        updatedAt: team.updated_at,
         roster: roster as any[],
       });
     }
@@ -130,6 +138,11 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
     SELECT id, name FROM athletes ORDER BY name ASC
   `).all();
 
+  // 5. Fetch all clubs for editing dropdown selectors
+  const clubs = db.prepare(`
+    SELECT id, name FROM clubs ORDER BY name ASC
+  `).all();
+
   return (
     <TournamentDetailClient
       tournament={tournament}
@@ -137,6 +150,7 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
       swimmingResults={swimmingResults}
       waterPoloDivisions={waterPoloDivisions}
       athletes={athletes as any[]}
+      clubs={clubs as any[]}
       session={session}
       initialSport={initialSport}
     />

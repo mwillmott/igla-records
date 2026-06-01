@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Calendar, MapPin, Globe, ChevronDown, Trophy, Waves, Search, Sparkles, X, Users, Target, Edit3 } from 'lucide-react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { Calendar, MapPin, Globe, ChevronDown, Trophy, Waves, Search, Sparkles, X, Users, Target, Edit3, Save, ShieldAlert, Clock } from 'lucide-react';
 import EditResultModal from '../../components/EditResultModal';
 import { UserSession } from '@/lib/auth';
+import { WATER_POLO_DIVISIONS } from '@/lib/config';
 
 interface Tournament {
   id: string;
@@ -60,11 +63,17 @@ interface WPTeam {
   place: number;
   teamId: string;
   team: string;
+  clubId: string | null;
+  clubName: string | null;
   wins: number;
   losses: number;
   goalsFor: number;
   goalsAgainst: number;
   points: number;
+  createdBy?: string | null;
+  createdAt?: string | null;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
   roster: WPPlayer[];
 }
 
@@ -81,6 +90,7 @@ interface TournamentDetailClientProps {
   swimmingResults: SwimResult[];
   waterPoloDivisions: WPDivision[];
   athletes: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
   session: UserSession | null;
   initialSport?: 'swimming' | 'wp';
 }
@@ -91,11 +101,39 @@ export default function TournamentDetailClient({
   swimmingResults,
   waterPoloDivisions,
   athletes,
+  clubs,
   session,
   initialSport = 'swimming',
 }: TournamentDetailClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [sport, setSport] = useState<'swimming' | 'wp'>(initialSport);
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
+
+  const handleSportChange = (newSport: 'swimming' | 'wp') => {
+    setSport(newSport);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sport', newSport);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // Water Polo Edit Modal States
+  const [editingWpRecord, setEditingWpRecord] = useState<any | null>(null);
+  const [editWpFields, setEditWpFields] = useState<any>({});
+  const [wpSaving, setWpSaving] = useState(false);
+  const [wpEditError, setWpEditError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Searchable club dropdown state in Edit Modal
+  const [clubSearch, setClubSearch] = useState('');
+  const [showClubDropdown, setShowClubDropdown] = useState(false);
+  const clubDropdownRef = useRef<HTMLDivElement>(null);
 
   // Synchronize sport tab if changed from navigation
   useEffect(() => {
@@ -103,6 +141,103 @@ export default function TournamentDetailClient({
       setSport(initialSport);
     }
   }, [initialSport]);
+
+  // Close club dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clubDropdownRef.current && !clubDropdownRef.current.contains(event.target as Node)) {
+        setShowClubDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter clubs in edit modal
+  const filteredClubsForSearch = useMemo(() => {
+    const q = clubSearch.trim().toLowerCase();
+    if (!q) return clubs;
+    return clubs.filter(c => c.name.toLowerCase().includes(q));
+  }, [clubs, clubSearch]);
+
+  // Initialize form fields when edit modal is opened
+  useEffect(() => {
+    if (editingWpRecord) {
+      setWpEditError('');
+      setEditWpFields({
+        team_name: editingWpRecord.teamName || '',
+        club_id: editingWpRecord.clubId || '',
+        division: editingWpRecord.division || '',
+        final_placement: editingWpRecord.placement || 1,
+        wins: editingWpRecord.wins !== null && editingWpRecord.wins !== undefined ? editingWpRecord.wins : '',
+        losses: editingWpRecord.losses !== null && editingWpRecord.losses !== undefined ? editingWpRecord.losses : '',
+        goals_for: editingWpRecord.goalsFor !== null && editingWpRecord.goalsFor !== undefined ? editingWpRecord.goalsFor : '',
+        goals_against: editingWpRecord.goalsAgainst !== null && editingWpRecord.goalsAgainst !== undefined ? editingWpRecord.goalsAgainst : '',
+        points: editingWpRecord.points !== null && editingWpRecord.points !== undefined ? editingWpRecord.points : '',
+      });
+      setClubSearch(editingWpRecord.clubName || '');
+    }
+  }, [editingWpRecord, clubs]);
+
+  const handleSaveWpEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWpRecord) return;
+
+    setWpSaving(true);
+    setWpEditError('');
+
+    try {
+      const response = await fetch('/api/admin/records/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'wp',
+          id: editingWpRecord.id,
+          fields: editWpFields,
+        }),
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        setWpEditError(resData.error || 'Failed to update record.');
+        setWpSaving(false);
+        return;
+      }
+
+      setEditingWpRecord(null);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      setWpEditError('An unexpected network error occurred.');
+      setWpSaving(false);
+    }
+  };
+
+  const updateWpField = (field: string, value: any) => {
+    setEditWpFields((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return 'N/A';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        return dateStr;
+      }
+      return d.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   // Swimming Subcomponent State
   const [swimSearch, setSwimSearch] = useState('');
@@ -256,14 +391,14 @@ export default function TournamentDetailClient({
               <button 
                 ref={swimmingRef} 
                 className={`cursor-pointer ${sport === 'swimming' ? 'active text-white' : 'text-ink'}`} 
-                onClick={() => setSport('swimming')}
+                onClick={() => handleSportChange('swimming')}
               >
                 <Waves size={14} /> Swimming
               </button>
               <button 
                 ref={wpRef} 
                 className={`cursor-pointer ${sport === 'wp' ? 'active text-white' : 'text-ink'}`} 
-                onClick={() => setSport('wp')}
+                onClick={() => handleSportChange('wp')}
               >
                 <Target size={14} /> Water polo
               </button>
@@ -401,15 +536,8 @@ export default function TournamentDetailClient({
               {waterPoloDivisions.map((div) => (
                 <section key={div.id} className="mb-8">
                   {/* Division Header */}
-                  <div className="division-row flex items-center justify-between border-b-2 border-ink pb-2 mb-4 select-none">
-                    <div className="flex items-center gap-3">
-                      <span className="division-letter font-display text-3xl font-normal text-coral">{div.id}</span>
-                      <div>
-                        <div className="division-name font-bold text-sm text-ink">{div.name}</div>
-                        <div className="division-sub text-[11px] text-ink-3 mt-0.5">{div.subtitle} · {div.standings.length} teams</div>
-                      </div>
-                    </div>
-                    <span className="section-label text-[10px] font-bold tracking-wider text-ink-3 uppercase">Final Standings</span>
+                  <div className="division-row border-b-2 border-ink pb-2 mb-4 select-none">
+                    <span className="division-letter font-display text-3xl font-normal text-coral">{div.id}</span>
                   </div>
 
                   {/* Team Cards Accordion Stack */}
@@ -424,9 +552,17 @@ export default function TournamentDetailClient({
                             isOpen ? 'expanded shadow-[4px_5px_0_#0d3a52]' : ''
                           } ${t.place === 1 ? 'champion bg-gradient-to-r from-coral-pale/50 to-white' : ''}`}
                         >
-                          <button 
-                            className="team-header w-full text-left p-4 flex items-center justify-between gap-4 cursor-pointer focus:outline-none"
+                          <div 
+                            role="button"
+                            tabIndex={0}
+                            className="team-header w-full text-left p-4 flex items-center justify-between gap-4 cursor-pointer focus:outline-none select-none"
                             onClick={() => toggleWpExpanded(t.teamId)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                toggleWpExpanded(t.teamId);
+                              }
+                            }}
                           >
                             <div className="team-place font-mono font-bold text-base text-ink pr-2 tabular-nums">
                               {String(t.place).padStart(2, '0')}
@@ -471,11 +607,40 @@ export default function TournamentDetailClient({
                                 <div className="team-points font-mono font-bold text-sm text-ink">{t.points}</div>
                                 <div className="k text-[9px] uppercase tracking-wider text-ink-3 font-bold mt-0.5">Pts</div>
                               </div>
+                              {session?.role === 'admin' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setEditingWpRecord({
+                                      id: t.teamId,
+                                      teamName: t.team,
+                                      clubId: t.clubId,
+                                      clubName: t.clubName,
+                                      division: div.id,
+                                      placement: t.place,
+                                      wins: t.wins,
+                                      losses: t.losses,
+                                      goalsFor: t.goalsFor,
+                                      goalsAgainst: t.goalsAgainst,
+                                      points: t.points,
+                                      createdBy: t.createdBy,
+                                      createdAt: t.createdAt,
+                                      updatedBy: t.updatedBy,
+                                      updatedAt: t.updatedAt,
+                                    });
+                                  }}
+                                  className="icon-btn shrink-0 border border-ink/20 hover:bg-coral-pale text-ink transition-all hover:border-coral cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg ml-1 mr-1"
+                                  title="Edit Water Polo Standings"
+                                >
+                                  <Edit3 size={12} />
+                                </button>
+                              )}
                               <span className={`chev transition-transform duration-280 ${isOpen ? 'rotate-180 text-coral' : 'text-ink-3'}`}>
                                 <ChevronDown size={18} />
                               </span>
                             </div>
-                          </button>
+                          </div>
 
                           {/* Collapsible Roster Grid */}
                           <div className={`roster transition-all duration-320 ${isOpen ? 'block border-t-2 border-ink bg-bg/25' : 'hidden'}`}>
@@ -534,6 +699,233 @@ export default function TournamentDetailClient({
           window.location.reload();
         }}
       />
+
+      {/* WATER POLO STANDINGS EDIT MODAL */}
+      {mounted && editingWpRecord && createPortal(
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
+          <div className="tile max-w-lg w-full bg-white border-2 border-ink shadow-[5px_6px_0_#0d3a52] overflow-hidden flex flex-col max-h-[90vh] rounded-2xl animate-scaleUp">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b-2 border-ink bg-aqua-sky/30 flex justify-between items-center select-none">
+              <div className="flex items-center gap-2">
+                <Trophy size={18} className="text-coral" />
+                <h3 className="font-display text-xl font-bold text-ink">
+                  Edit Water Polo Standings
+                </h3>
+              </div>
+              <button 
+                onClick={() => setEditingWpRecord(null)}
+                className="w-8 h-8 rounded-full border-2 border-ink bg-white flex items-center justify-center text-ink hover:bg-coral-pale hover:text-coral transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveWpEdit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 text-left">
+              {wpEditError && (
+                <div className="p-3.5 bg-coral-pale border-2 border-coral rounded-xl text-xs font-semibold text-coral-deep flex items-start gap-2">
+                  <ShieldAlert size={15} className="shrink-0 mt-0.5" />
+                  <span>{wpEditError}</span>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Team Name</label>
+                <input 
+                  type="text" 
+                  value={editWpFields.team_name || ''} 
+                  onChange={e => updateWpField('team_name', e.target.value)}
+                  className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                  required
+                />
+              </div>
+
+              {/* SEARCHABLE CLUB SELECT COMBOBOX */}
+              <div className="flex flex-col gap-1.5 relative" ref={clubDropdownRef}>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Club</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={clubSearch} 
+                    onChange={e => {
+                      setClubSearch(e.target.value);
+                      setShowClubDropdown(true);
+                      updateWpField('club_id', ''); // clear id while searching/typing
+                    }}
+                    onFocus={() => setShowClubDropdown(true)}
+                    className="bg-white border-2 border-ink rounded-xl px-3 pr-10 w-full h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    placeholder="Search club name..."
+                    required
+                  />
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-2 pointer-events-none" />
+                </div>
+                {showClubDropdown && filteredClubsForSearch.length > 0 && (
+                  <ul className="absolute left-0 right-0 top-16 bg-white border-2 border-ink rounded-xl shadow-md max-h-48 overflow-y-auto z-50 select-none">
+                    {filteredClubsForSearch.map(c => (
+                      <li 
+                        key={c.id} 
+                        onClick={() => {
+                          updateWpField('club_id', c.id);
+                          setClubSearch(c.name);
+                          setShowClubDropdown(false);
+                        }}
+                        className="px-3.5 py-2 hover:bg-aqua-pale text-xs text-ink font-semibold cursor-pointer border-b border-ink/5 last:border-0"
+                      >
+                        {c.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* DIVISION DROPDOWN SELECT */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Division</label>
+                  <div className="relative select-none">
+                    <select 
+                      value={editWpFields.division || ''} 
+                      onChange={e => updateWpField('division', e.target.value)}
+                      className="appearance-none bg-white border-2 border-ink rounded-xl px-3 w-full h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                      required
+                    >
+                      <option value="" disabled>Select Division</option>
+                      {WATER_POLO_DIVISIONS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-2 pointer-events-none" />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Placement (Rank)</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={editWpFields.final_placement || 1} 
+                    onChange={e => updateWpField('final_placement', parseInt(e.target.value) || 1)}
+                    className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* DETAILED STATS GRID */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Match Standings Statistics (Optional)</label>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Wins</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editWpFields.wins ?? ''} 
+                      onChange={e => updateWpField('wins', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Losses</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editWpFields.losses ?? ''} 
+                      onChange={e => updateWpField('losses', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Goals For</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editWpFields.goals_for ?? ''} 
+                      onChange={e => updateWpField('goals_for', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Goals Ag.</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editWpFields.goals_against ?? ''} 
+                      onChange={e => updateWpField('goals_against', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Points</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={editWpFields.points ?? ''} 
+                      onChange={e => updateWpField('points', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                      className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* BEAUTIFUL AUDIT TRAIL LOG */}
+              <div className="p-4 bg-aqua-sky/15 border-2 border-dashed border-ink/20 rounded-2xl flex flex-col gap-2.5 mt-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-ink flex items-center gap-1 leading-none select-none">
+                  <Clock size={11} className="text-coral" />
+                  <span>Audit History Trail</span>
+                </div>
+                
+                <div className="text-xs flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center text-[11px] text-ink-2">
+                    <span>Originally Created By:</span>
+                    <span className="font-semibold text-ink">{editingWpRecord.createdBy || 'system@igla.org'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-ink-3 font-mono leading-none">
+                    <span>Timestamp:</span>
+                    <span>{formatDate(editingWpRecord.createdAt)}</span>
+                  </div>
+                  
+                  {editingWpRecord.updatedBy && (
+                    <>
+                      <div className="h-[1.5px] border-t border-dashed border-ink/20 my-1" />
+                      <div className="flex justify-between items-center text-[11px] text-ink-2">
+                        <span>Last Updated By:</span>
+                        <span className="font-semibold text-coral">{editingWpRecord.updatedBy}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-ink-3 font-mono leading-none">
+                        <span>Timestamp:</span>
+                        <span>{formatDate(editingWpRecord.updatedAt)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 justify-end pt-4 border-t border-ink/10 select-none">
+                <button
+                  type="button"
+                  onClick={() => setEditingWpRecord(null)}
+                  className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={wpSaving}
+                  className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Save size={13} />
+                  <span>{wpSaving ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
