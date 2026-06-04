@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
-import { getSession } from '@/lib/auth';
-import Header from './components/Header';
 import './globals.css';
 
 const geistSans = Geist({
@@ -27,31 +25,18 @@ export const metadata: Metadata = {
     'Championship results, member clubs, and all-time records for the International Group of LGBTQIA+ Aquatics.',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getSession();
-
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
     >
       <body className="app">
-        <Header session={session} />
-        
-        <main className="page">
-          {children}
-        </main>
-
-        <footer className="footer mt-auto">
-          <div className="footer-inner">
-            <span>© 2026 IGLA+ · International Group of LGBTQIA+ Aquatics · Est. 1987</span>
-            <span>Prototype · Relational Database Engine</span>
-          </div>
-        </footer>
+        {children}
       </body>
     </html>
   );

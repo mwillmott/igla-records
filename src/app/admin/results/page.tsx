@@ -2,11 +2,11 @@ import { getSession } from '@/lib/auth';
 import db from '@/db';
 import Link from 'next/link';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
-import AdminClient from './AdminClient';
+import ResultsAdminClient from './ResultsAdminClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPage() {
+export default async function AdminResultsPage() {
   const session = await getSession();
 
   // Security Wall: Deny access to non-admins
@@ -20,7 +20,7 @@ export default async function AdminPage() {
           <h1 className="font-display text-4xl text-ink font-normal mb-3">Access Denied</h1>
           <p className="text-xs text-ink-3 leading-relaxed mb-6">
             You must be logged in with an official <span className="font-semibold text-coral">@igla.org</span> email address 
-            to access the ingestion dashboard.
+            to access the administration panel.
           </p>
           <Link 
             href="/results" 
@@ -34,20 +34,10 @@ export default async function AdminPage() {
     );
   }
 
-  // Load KPI counts
-  const clubsCount = db.prepare('SELECT COUNT(*) AS count FROM clubs').get() as { count: number };
-  const tournamentsCount = db.prepare('SELECT COUNT(*) AS count FROM tournaments').get() as { count: number };
-  const athletesCount = db.prepare('SELECT COUNT(*) AS count FROM athletes').get() as { count: number };
-  const resultsCount = db.prepare('SELECT COUNT(*) AS count FROM swimming_results').get() as { count: number };
+  // Load all tournaments for the selector
+  const tournaments = db.prepare(`
+    SELECT id, name, year FROM tournaments ORDER BY year DESC
+  `).all();
 
-  const stats = {
-    clubs: clubsCount?.count || 0,
-    tournaments: tournamentsCount?.count || 0,
-    athletes: athletesCount?.count || 0,
-    results: resultsCount?.count || 0,
-  };
-
-  const adminName = session.name || 'Administrator';
-
-  return <AdminClient stats={stats} adminName={adminName} />;
+  return <ResultsAdminClient tournaments={tournaments as any[]} />;
 }

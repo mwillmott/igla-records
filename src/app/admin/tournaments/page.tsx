@@ -1,12 +1,10 @@
 import { getSession } from '@/lib/auth';
-import db from '@/db';
 import Link from 'next/link';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
-import AdminClient from './AdminClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPage() {
+export default async function AdminTournamentsPage() {
   const session = await getSession();
 
   // Security Wall: Deny access to non-admins
@@ -20,7 +18,7 @@ export default async function AdminPage() {
           <h1 className="font-display text-4xl text-ink font-normal mb-3">Access Denied</h1>
           <p className="text-xs text-ink-3 leading-relaxed mb-6">
             You must be logged in with an official <span className="font-semibold text-coral">@igla.org</span> email address 
-            to access the ingestion dashboard.
+            to access the administration panel.
           </p>
           <Link 
             href="/results" 
@@ -34,20 +32,27 @@ export default async function AdminPage() {
     );
   }
 
-  // Load KPI counts
-  const clubsCount = db.prepare('SELECT COUNT(*) AS count FROM clubs').get() as { count: number };
-  const tournamentsCount = db.prepare('SELECT COUNT(*) AS count FROM tournaments').get() as { count: number };
-  const athletesCount = db.prepare('SELECT COUNT(*) AS count FROM athletes').get() as { count: number };
-  const resultsCount = db.prepare('SELECT COUNT(*) AS count FROM swimming_results').get() as { count: number };
-
-  const stats = {
-    clubs: clubsCount?.count || 0,
-    tournaments: tournamentsCount?.count || 0,
-    athletes: athletesCount?.count || 0,
-    results: resultsCount?.count || 0,
-  };
-
-  const adminName = session.name || 'Administrator';
-
-  return <AdminClient stats={stats} adminName={adminName} />;
+  return (
+    <div className="animate-fadeIn">
+      <div className="admin-pagehead">
+        <div>
+          <h1>Manage <em>Tournaments</em></h1>
+          <div className="sub">Create new tournaments or edit tournament metadata.</div>
+        </div>
+      </div>
+      
+      <div className="tile p-8 bg-white border-2 border-ink shadow-[4px_5px_0_#0d3a52] text-center max-w-lg mx-auto mt-8 select-none">
+        <h3 className="font-display text-2xl text-ink font-normal mb-2">Tournaments Panel</h3>
+        <p className="text-xs text-ink-3 leading-relaxed mb-6">
+          This panel is scheduled for development in Phase 3. Here you will be able to create new tournaments, update dates, configure locations, and assign colors.
+        </p>
+        <Link 
+          href="/admin" 
+          className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
+        >
+          <span>Back to Dashboard</span>
+        </Link>
+      </div>
+    </div>
+  );
 }

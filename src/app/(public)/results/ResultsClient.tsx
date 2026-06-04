@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Waves, Search, Sparkles, Trophy, X, ChevronDown, Award, Edit3, Save, ShieldAlert, Clock } from 'lucide-react';
-import EditResultModal from '../components/EditResultModal';
+import EditResultModal from '../../components/EditResultModal';
 import { UserSession } from '@/lib/auth';
 import { WATER_POLO_DIVISIONS } from '@/lib/config';
 

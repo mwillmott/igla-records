@@ -54,6 +54,47 @@ export async function POST(request: Request) {
 
     const rows = parsed.data as any[];
     
+    // Validate CSV Headers
+    const requiredHeaders = ['athlete_name', 'club_id', 'event', 'course', 'age_category', 'gender_category', 'time', 'place'];
+    const missingHeaders = requiredHeaders.filter(h => !parsed.meta.fields?.includes(h));
+
+    if (missingHeaders.length > 0) {
+      return NextResponse.json({ 
+        error: `Invalid CSV format. Missing required column headers: ${missingHeaders.join(', ')}.` 
+      }, { status: 400 });
+    }
+
+    // Validate CSV Rows for missing required values
+    const rowErrors: string[] = [];
+    for (let idx = 0; idx < rows.length; idx++) {
+      const row = rows[idx];
+      const athleteName = (row.athlete_name || '').trim();
+      
+      // If the row doesn't have an athlete name, skip it (or treat it as empty)
+      if (!athleteName) continue;
+
+      const lineNum = idx + 2; // Line number in CSV (1-based, plus 1 header row)
+      const missingValues: string[] = [];
+      for (const header of requiredHeaders) {
+        if (header === 'athlete_name') continue;
+        const val = (row[header] || '').trim();
+        if (!val) {
+          missingValues.push(header);
+        }
+      }
+
+      if (missingValues.length > 0) {
+        rowErrors.push(`Line ${lineNum} (Athlete: "${athleteName}") is missing values for: ${missingValues.join(', ')}`);
+      }
+    }
+
+    if (rowErrors.length > 0) {
+      return NextResponse.json({
+        error: `CSV row validation failed:\n` + rowErrors.slice(0, 5).join('\n') + 
+               (rowErrors.length > 5 ? `\n...and ${rowErrors.length - 5} more row(s) with errors.` : '')
+      }, { status: 400 });
+    }
+    
     // Retrieve all existing athletes from DB
     const dbAthletes = db.prepare(`
       SELECT a.*, c.name AS club_name 
