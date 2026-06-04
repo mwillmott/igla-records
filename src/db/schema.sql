@@ -125,7 +125,6 @@ CREATE TABLE IF NOT EXISTS water_polo_teams (
 CREATE TABLE IF NOT EXISTS water_polo_rosters (
     team_id TEXT NOT NULL,
     athlete_id TEXT NOT NULL,
-    role TEXT NOT NULL,
     cap_number INTEGER NOT NULL,
     is_captain BOOLEAN NOT NULL DEFAULT 0,
     PRIMARY KEY (team_id, athlete_id),

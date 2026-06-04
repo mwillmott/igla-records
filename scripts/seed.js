@@ -373,8 +373,8 @@ if (IGLA_DATA.waterPolo && IGLA_DATA.waterPolo.divisions) {
   `);
   
   const insertWPRoster = db.prepare(`
-    INSERT INTO water_polo_rosters (team_id, athlete_id, role, cap_number, is_captain)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO water_polo_rosters (team_id, athlete_id, cap_number, is_captain)
+    VALUES (?, ?, ?, ?)
   `);
 
   const divMap = { 'A': 'Competitive', 'B': 'Intermediate', 'C': 'Recreational' };
@@ -406,7 +406,6 @@ if (IGLA_DATA.waterPolo && IGLA_DATA.waterPolo.divisions) {
           insertWPRoster.run(
             team.teamId,
             p.athleteId,
-            p.role,
             p.cap,
             p.captain ? 1 : 0
           );

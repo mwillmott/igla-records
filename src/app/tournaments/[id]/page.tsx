@@ -102,7 +102,6 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
         SELECT 
           r.athlete_id AS athleteId, 
           a.name, 
-          r.role, 
           r.cap_number AS cap, 
           r.is_captain AS captain
         FROM water_polo_rosters r
@@ -135,7 +134,10 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
 
   // 4. Fetch all athletes for editing dropdown selectors
   const athletes = db.prepare(`
-    SELECT id, name FROM athletes ORDER BY name ASC
+    SELECT a.id, a.name, c.name AS clubName 
+    FROM athletes a
+    LEFT JOIN clubs c ON a.current_club_id = c.id
+    ORDER BY a.name ASC
   `).all();
 
   // 5. Fetch all clubs for editing dropdown selectors

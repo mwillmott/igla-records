@@ -36,7 +36,6 @@ interface SwimTimelineEntry {
 }
 
 interface WPTimelineEntry {
-  role: string;
   cap: number;
   captain: number;
   team: string;
@@ -308,9 +307,11 @@ export default function AthleteProfileClient({ athlete, timeline, athletes, sess
                           </span>
                         )}
                       </div>
-                      <div className="wp-role text-[11px] text-ink-3 mt-0.5">
-                        {entry.waterPolo.role} {entry.waterPolo.captain === 1 ? '· Team Captain' : ''}
-                      </div>
+                      {entry.waterPolo.captain === 1 && (
+                        <div className="wp-role text-[11px] text-ink-3 mt-0.5 font-semibold">
+                          Team Captain
+                        </div>
+                      )}
                     </div>
                     
                     <span className={`place-badge select-none ${

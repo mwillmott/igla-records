@@ -137,7 +137,6 @@ erDiagram
     WATER_POLO_ROSTERS {
         text team_id PK, FK
         text athlete_id PK, FK
-        text role
         integer cap_number
         boolean is_captain
     }
@@ -186,7 +185,7 @@ erDiagram
 
 7. **`water_polo_rosters`**
    - Resolves the many-to-many relationship between `water_polo_teams` and `athletes`.
-   - Tracks individual cap numbers, field positions, and team captains.
+   - Tracks individual cap numbers and team captains.
 
 ---
 

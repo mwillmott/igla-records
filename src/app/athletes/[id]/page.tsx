@@ -57,7 +57,6 @@ export default async function AthleteDetailPage({ params }: PageProps) {
   // 3. Fetch all water polo roster spots and finishes for this athlete
   const wpResults = db.prepare(`
     SELECT 
-      roster.role,
       roster.cap_number AS cap,
       roster.is_captain AS captain,
       team.team_name AS team,
