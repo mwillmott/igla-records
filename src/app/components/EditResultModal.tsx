@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Trophy, X, ShieldAlert, Save, Clock } from 'lucide-react';
 import { UserSession } from '@/lib/auth';
+import { SWIMMING_AGE_CATEGORIES } from '@/lib/config';
 
 interface EditResultModalProps {
   isOpen: boolean;
@@ -206,14 +207,20 @@ export default function EditResultModal({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Age Category</label>
-              <input 
-                type="text" 
+              <select 
                 value={editFields.age_category || ''} 
                 onChange={e => updateField('age_category', e.target.value)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
-                placeholder="e.g. 25-29"
+                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
                 required
-              />
+              >
+                <option value="" disabled>Select Age Category</option>
+                {SWIMMING_AGE_CATEGORIES.map(age => (
+                  <option key={age} value={age}>{age}</option>
+                ))}
+                {editFields.age_category && !(SWIMMING_AGE_CATEGORIES as readonly string[]).includes(editFields.age_category) && (
+                  <option value={editFields.age_category}>{editFields.age_category}</option>
+                )}
+              </select>
             </div>
 
             <div className="flex flex-col gap-1.5">
