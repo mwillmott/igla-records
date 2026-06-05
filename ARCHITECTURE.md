@@ -128,7 +128,6 @@ erDiagram
         integer goals_for
         integer goals_against
         integer points
-        text score
         text created_by
         text created_at
         text updated_by
@@ -286,12 +285,25 @@ The visual design system is defined as custom properties in [globals.css](file:/
 
 ### User Session Logic
 - Configured in [auth.ts](file:///Users/mwillmott/Antigravity/igla-records/src/lib/auth.ts).
-- User sessions are stored in an encrypted cookie named `igla_session`.
-- Decryption and encryption utilize an AES-256-GCM cipher with a `SESSION_SECRET` key to safeguard authentication signatures.
+- User sessions are stored in an `httpOnly`, `sameSite=lax` encrypted cookie named `igla_session` with a 7-day `maxAge`.
+- Decryption and encryption utilize an AES-256-GCM cipher. The key is derived via `scrypt` from a `SESSION_SECRET` environment variable.
+  - ⚠️ **Security note:** `auth.ts` falls back to a hardcoded default secret when `SESSION_SECRET` is unset. A real secret **must** be provided in any non-local environment, or session tokens are trivially forgeable.
+
+### Login Flow & Auth Endpoints
+Authentication is handled by a small set of route handlers under `/api/auth`:
+- **`/api/auth/login`** — initiates the sign-in flow.
+- **`/api/auth/callback`** — the core handler. It supports two paths:
+  1. **Google OAuth** — exchanges the `?code` authorization code for tokens at `oauth2.googleapis.com`, fetches the user profile from the Google userinfo endpoint, derives the role, and sets the session cookie. Requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_REDIRECT_URI`.
+  2. **Developer mock login** — `?mock=admin` or `?mock=user` short-circuits OAuth and issues a fully-formed session **with no credentials**.
+     - ⚠️ **Security note:** the mock path is an unauthenticated admin backdoor and must be disabled/guarded before any production deployment.
+- **`/api/auth/session`** — returns the current decoded session for the client UI.
+- **`/api/auth/logout`** — clears the `igla_session` cookie.
+
+After a successful login, admins are redirected to `/admin` and regular users to `/results`.
 
 ### Authorization Gates (RBAC)
-- Admin privileges are verified by reviewing email addresses. User accounts ending with `@igla.org` are granted the `admin` role.
-- Server-side gates restrict access to `/admin` and POST request endpoints (such as updating records or resolving conflicts).
+- Admin privileges are verified by reviewing email addresses. User accounts ending with `@igla.org` are granted the `admin` role (derived in the callback handler); everyone else is a `user`.
+- Server-side gates (`getSession()` / `session.role !== 'admin'`) restrict access to every `/admin` page and every `/api/admin/*` POST endpoint (uploads, conflict resolution, record/team edits, roster edits, and clubs/tournaments CRUD).
 
 ### Relational Audit Logging
 - Modification endpoints write the acting administrator's email to `updated_by` and save a timestamp to `updated_at`.
@@ -345,28 +357,60 @@ The Tournaments Management Console (`/admin/tournaments`) provides a full-featur
 
 ---
 
-## 9. Directory Structures
+## 9. Results & Roster Management Console
+
+The Results Management Console (`/admin/results`) lets administrators correct and curate individual performance data after ingestion, for both swimming and water polo.
+
+### Key Operations & Features
+1. **Tournament-Scoped Editing**: The page loads the list of tournaments (most recent first) as a selector; results are reviewed and edited in the context of a chosen championship.
+2. **Edit Result Modal**: The shared [EditResultModal](file:///Users/mwillmott/Antigravity/igla-records/src/app/components/EditResultModal.tsx) component edits a single record in place:
+   - **Swimming results** — event, course, age/gender category, time, place, record flags (`is_all_time_record`, `record_still_held`), athlete linkage, and the "broken by" athlete reference.
+   - **Water polo teams** — team name, club, division, final placement, and the win/loss/goals/points statistics.
+3. **Water Polo Roster Editing**: Rosters for a water polo team can be edited inline. Adding a player supports either selecting an existing athlete or **creating a brand-new athlete profile on the fly** (auto-generating a slug ID, defaulting pronouns/hometown), all within a single atomic transaction. Duplicate-roster and missing-team conditions are rejected with descriptive errors.
+4. **Audit Trail**: Every edit stamps `updated_by` (the acting admin's email) and `updated_at`, which surface in the UI as a "who/when" indicator (see §6).
+
+### Backend APIs
+- **POST `/api/admin/records/update`**: Updates a single `swimming` or `wp` record by `id`, writing audit columns. Returns 404 if the target row does not exist.
+- **POST `/api/admin/records/delete`**: Deletes a single swimming result or water polo team.
+- **POST `/api/admin/roster/add`**: Adds an athlete (existing or newly created) to a water polo roster with cap number and captain flag, inside a transaction.
+- **POST `/api/admin/roster/delete`**: Removes an athlete from a roster.
+
+### Placeholder Admin Panels
+Two further panels exist in the navigation but are intentional stubs marked *"scheduled for development in Phase 4"*:
+- **`/admin/athletes`** — planned profile verification, results-to-athlete linking, and pronoun/hometown editing.
+- **`/admin/settings`** — planned admin-account management and global configuration (e.g. age-category rules).
+
+---
+
+## 10. Directory Structures
 
 ```
 ├── design-handoff/           # Legacy prototypes and static datasets
 ├── scripts/
 │   ├── seed.js               # SQL seeding script parsing handoff arrays into sqlite
-│   └── find-empty-pills.js   # Utility validation check script
+│   ├── find-empty-pills.js   # Utility validation check script
+│   └── test-endpoints.js     # API endpoint smoke-test script
 ├── src/
 │   ├── db/
 │   │   ├── index.ts          # Database instance initialization (better-sqlite3)
 │   │   └── schema.sql        # Database schema DDL
 │   ├── lib/
-│   │   ├── auth.ts           # AES-256-GCM cookie session encryption handlers
-│   │   └── config.ts         # Centralized global lists (sports, regions, age categories)
+│   │   ├── auth.ts           # AES-256-GCM cookie session + Google OAuth helpers
+│   │   └── config.ts         # Centralized lists (sports, regions, age categories,
+│   │                         #   water polo divisions, tournament types)
 │   └── app/
 │       ├── layout.tsx        # Next.js global layout
 │       ├── globals.css       # Full G3 CSS design system
-│       ├── admin/            # Ingestion, Clubs, and Tournaments management dashboard panels
-│       ├── api/              # Backend API handlers (records, uploads, clubs/tournaments CRUD)
-│       ├── athletes/         # Athlete profile detail routes
-│       ├── clubs/            # Club listing and detail routes
-│       ├── results/          # Records dashboard routes
-│       └── tournaments/      # Tournament listing and detail routes
+│       ├── components/       # Shared UI (Header.tsx, EditResultModal.tsx)
+│       ├── (public)/         # Public route group (shared public layout)
+│       │   ├── athletes/     # Athlete profile detail routes
+│       │   ├── clubs/        # Club listing and detail routes
+│       │   ├── results/      # Records dashboard routes
+│       │   └── tournaments/  # Tournament listing and detail routes
+│       ├── admin/            # Admin panels: ingestion (page.tsx), clubs, tournaments,
+│       │                     #   results, athletes (stub), settings (stub)
+│       └── api/
+│           ├── auth/         # login, callback (OAuth + mock), session, logout
+│           └── admin/        # upload, resolve, records, roster, clubs, tournaments
 └── igla.db                   # SQLite database
 ```
