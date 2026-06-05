@@ -5,19 +5,21 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Calendar, MapPin, Globe, ChevronDown, Trophy, Waves, Search, Sparkles, X, Users, Target, Edit3, Save, ShieldAlert, Clock, Plus, Info } from 'lucide-react';
-import EditResultModal from '../../components/EditResultModal';
+import EditResultModal from '../../../components/EditResultModal';
+import { formatTournamentDates } from '../TournamentsClient';
 import { UserSession } from '@/lib/auth';
 import { WATER_POLO_DIVISIONS } from '@/lib/config';
 
 interface Tournament {
   id: string;
   name: string;
-  co_name: string;
+  type: string;
   city: string;
   country: string;
   flag: string;
   year: number;
-  dates: string;
+  start_date: string;
+  end_date: string;
   status: 'live' | 'upcoming' | 'past';
   color: string;
   venue: string;
@@ -483,10 +485,16 @@ export default function TournamentDetailClient({
       </div>
 
       {/* Hero Header Card */}
-      <section className="tile tile-lg hero tile-depth-aqua mb-6">
+      <section 
+        className="tile tile-lg hero mb-6"
+        style={{
+          background: `var(--depth-overlay), ${tournament.color}`,
+          color: 'white',
+        }}
+      >
         <span className="eyebrow eyebrow-on-dark mb-4 select-none">
           {tournament.status === 'live' && <>● Live · </>}
-          {tournament.dates}
+          {formatTournamentDates(tournament.start_date, tournament.end_date)}
         </span>
         <h1 className="display display-1 font-normal tracking-tight text-white mb-4">
           <em>{tournament.city} </em>
@@ -496,7 +504,7 @@ export default function TournamentDetailClient({
         
         <div className="hero-meta flex flex-wrap gap-x-6 gap-y-2 mt-4 text-xs text-white/90">
           <span className="hero-meta-item flex items-center gap-1.5">
-            <Calendar size={14} /> <span>{tournament.dates}</span>
+            <Calendar size={14} /> <span>{formatTournamentDates(tournament.start_date, tournament.end_date)}</span>
           </span>
           <span className="hero-meta-item flex items-center gap-1.5">
             <MapPin size={14} /> <span>{tournament.venue}</span>

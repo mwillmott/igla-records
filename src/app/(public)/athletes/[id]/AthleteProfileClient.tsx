@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Waves, Target, Sparkles, Hash, MapPin, Calendar, CheckCircle, UserPlus, Share, ArrowLeft, Edit3 } from 'lucide-react';
-import EditResultModal from '../../components/EditResultModal';
+import EditResultModal from '../../../components/EditResultModal';
 import { UserSession } from '@/lib/auth';
 
 interface Athlete {

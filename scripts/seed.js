@@ -87,30 +87,41 @@ for (const club of IGLA_CLUBS) {
 }
 console.log('Seeded Clubs.');
 
+const tournamentDatesMap = {
+  'valencia-2026': { start: '2026-06-14', end: '2026-06-21' },
+  'dc-2025': { start: '2025-05-31', end: '2025-06-05' },
+  'buenosaires-2024': { start: '2024-11-04', end: '2024-11-09' },
+  'london-2023': { start: '2023-07-09', end: '2023-07-14' },
+  'palmsprings-2022': { start: '2022-04-06', end: '2022-04-10' },
+  'montreal-2027': { start: '2027-07-30', end: '2027-08-05' },
+  'reykjavik-2028': { start: '2028-06-18', end: '2028-06-24' }
+};
+
 const insertTournament = db.prepare(`
-  INSERT INTO tournaments (id, name, co_name, city, country, flag, year, dates, status, color, website, podium, venue, description, participants, nations, clubs, records, expected_athletes, expected_nations, expected_clubs)
+  INSERT INTO tournaments (id, name, type, city, country, flag, year, start_date, end_date, status, color, website, venue, description, participants, nations, clubs, records, expected_athletes, expected_nations, expected_clubs)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 for (const t of IGLA_TOURNAMENTS) {
   const website = `https://www.${t.id}.igla.org`;
-  const podiumStr = t.podium ? t.podium.join(',') : null;
+  const dateInfo = tournamentDatesMap[t.id] || { start: `${t.year}-01-01`, end: `${t.year}-01-07` };
   const expectedAthletes = t.expected ? t.expected.athletes : null;
   const expectedNations = t.expected ? t.expected.nations : null;
   const expectedClubs = t.expected ? t.expected.clubs : null;
+  const type = t.coName.startsWith('Gay Games') ? 'Gay Games' : 'IGLA+ Championship';
   insertTournament.run(
     t.id,
     t.name,
-    t.coName,
+    type,
     t.city,
     t.country,
     t.flag,
     t.year,
-    t.dates,
+    dateInfo.start,
+    dateInfo.end,
     t.status,
     t.color,
     website,
-    podiumStr,
     t.venue || null,
     t.description || null,
     t.participants || null,

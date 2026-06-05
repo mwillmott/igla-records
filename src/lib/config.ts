@@ -29,3 +29,30 @@ export const SWIMMING_AGE_CATEGORIES = [
 
 export type SwimmingAgeCategory = typeof SWIMMING_AGE_CATEGORIES[number];
 
+export const AQUATIC_SPORTS = [
+  'Swimming',
+  'Water Polo',
+  'Diving',
+  'Artistic Swimming',
+  'Open Water'
+] as const;
+
+export type AquaticSport = typeof AQUATIC_SPORTS[number];
+
+export const REGIONS = [
+  'North America',
+  'Europe',
+  'Asia',
+  'Oceania',
+  'Africa',
+  'South America'
+] as const;
+
+export type Region = typeof REGIONS[number];
+
+export const TOURNAMENT_TYPES = [
+  'IGLA+ Championship',
+  'Gay Games'
+] as const;
+
+export type TournamentType = typeof TOURNAMENT_TYPES[number];

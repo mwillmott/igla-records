@@ -55,16 +55,16 @@ erDiagram
     TOURNAMENTS {
         text id PK
         text name
-        text co_name
+        text type
         text city
         text country
         text flag
         integer year
-        text dates
+        text start_date
+        text end_date
         text status
         text color
         text website
-        text podium
         text venue
         text description
         integer participants
@@ -128,7 +128,6 @@ erDiagram
         integer goals_for
         integer goals_against
         integer points
-        text score
         text created_by
         text created_at
         text updated_by
@@ -286,12 +285,25 @@ The visual design system is defined as custom properties in [globals.css](file:/
 
 ### User Session Logic
 - Configured in [auth.ts](file:///Users/mwillmott/Antigravity/igla-records/src/lib/auth.ts).
-- User sessions are stored in an encrypted cookie named `igla_session`.
-- Decryption and encryption utilize an AES-256-GCM cipher with a `SESSION_SECRET` key to safeguard authentication signatures.
+- User sessions are stored in an `httpOnly`, `sameSite=lax` encrypted cookie named `igla_session` with a 7-day `maxAge`.
+- Decryption and encryption utilize an AES-256-GCM cipher. The key is derived via `scrypt` from a `SESSION_SECRET` environment variable.
+  - ⚠️ **Security note:** `auth.ts` falls back to a hardcoded default secret when `SESSION_SECRET` is unset. A real secret **must** be provided in any non-local environment, or session tokens are trivially forgeable.
+
+### Login Flow & Auth Endpoints
+Authentication is handled by a small set of route handlers under `/api/auth`:
+- **`/api/auth/login`** — initiates the sign-in flow.
+- **`/api/auth/callback`** — the core handler. It supports two paths:
+  1. **Google OAuth** — exchanges the `?code` authorization code for tokens at `oauth2.googleapis.com`, fetches the user profile from the Google userinfo endpoint, derives the role, and sets the session cookie. Requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_REDIRECT_URI`.
+  2. **Developer mock login** — `?mock=admin` or `?mock=user` short-circuits OAuth and issues a fully-formed session **with no credentials**.
+     - ⚠️ **Security note:** the mock path is an unauthenticated admin backdoor and must be disabled/guarded before any production deployment.
+- **`/api/auth/session`** — returns the current decoded session for the client UI.
+- **`/api/auth/logout`** — clears the `igla_session` cookie.
+
+After a successful login, admins are redirected to `/admin` and regular users to `/results`.
 
 ### Authorization Gates (RBAC)
-- Admin privileges are verified by reviewing email addresses. User accounts ending with `@igla.org` are granted the `admin` role.
-- Server-side gates restrict access to `/admin` and POST request endpoints (such as updating records or resolving conflicts).
+- Admin privileges are verified by reviewing email addresses. User accounts ending with `@igla.org` are granted the `admin` role (derived in the callback handler); everyone else is a `user`.
+- Server-side gates (`getSession()` / `session.role !== 'admin'`) restrict access to every `/admin` page and every `/api/admin/*` POST endpoint (uploads, conflict resolution, record/team edits, roster edits, and clubs/tournaments CRUD).
 
 ### Relational Audit Logging
 - Modification endpoints write the acting administrator's email to `updated_by` and save a timestamp to `updated_at`.
@@ -299,27 +311,106 @@ The visual design system is defined as custom properties in [globals.css](file:/
 
 ---
 
-## 7. Directory Structures
+## 7. Clubs Management Console
+
+The Clubs Management Console (`/admin/clubs`) provides a full-featured administrative interface for managing member organizations.
+
+### Key Operations & Features
+1. **Dynamic List View**: Displays all member clubs with client-side sorting (by Name, Members, Founded, and Medals), pagination, real-time query searching (across Name, City, Country, and Tagline), and centralized filter selectors (by Region and Sport).
+2. **Add & Edit Drawer**: A side-drawer interface for club profile creation and modification:
+   - **Auto-slug ID**: Creates a slug-formatted unique ID from the club name automatically for new clubs, but permits manual adjustment. Once saved, the ID slug is locked to protect foreign-key database constraints.
+   - **Interactive Live Preview**: Renders a mockup of the public club card in real-time as the admin types.
+   - **Centralized Configurations**: Uses single-source-of-truth lists for regions and aquatic disciplines from [config.ts](file:///Users/mwillmott/Antigravity/igla-records/src/lib/config.ts).
+3. **Cascade-Aware Safety Deletion**: Deleting a club triggers a verification modal:
+   - Calls the impact counting API to calculate affected records.
+   - Summarizes the cascading delete impact (swimming results, water polo teams, and history entries) and athlete affiliations that will be reset.
+   - Requires the administrator to type the club's short name exactly to confirm.
+
+### Backend CRUD APIs
+- **GET `/api/admin/clubs/impact`**: Queries the database using `better-sqlite3` to count referencing records across `swimming_results`, `water_polo_teams`, `club_tournament_history`, and `athletes` for a specified `id`.
+- **POST `/api/admin/clubs/save`**: Handles atomic inserts and updates. Restructures snake_case payload variables to align with required database columns and runs transaction validation checks.
+- **POST `/api/admin/clubs/delete`**: Executes the database deletion. SQLite foreign key constraints (`ON DELETE CASCADE` / `ON DELETE SET NULL`) automatically handle cleaning up related tables.
+
+---
+
+## 8. Tournaments Management Console
+
+The Tournaments Management Console (`/admin/tournaments`) provides a full-featured administrative interface for managing past, live, and upcoming IGLA+ championships.
+
+### Key Operations & Features
+1. **Dynamic List View**: Displays all tournaments with client-side sorting (by Year, Name, Participants, and Records), pagination, real-time query searching (across Name, City, Type, Country, and Venue), and status filtering. The stats column is simplified to display unified athletes and clubs counts.
+2. **Add & Edit Drawer**: A side-drawer interface for tournament profile creation and modification:
+   - **Auto-slug ID**: Creates a slug-formatted unique ID from the name automatically for new tournaments, but permits manual adjustment. Once saved, the ID slug is locked to protect foreign-key database constraints.
+   - **Centralized Dropdowns**: Uses centralized single-source-of-truth type selection dropdowns (`type`, renamed from `co_name`) defined in [config.ts](file:///Users/mwillmott/Antigravity/igla-records/src/lib/config.ts).
+   - **Date Range Input**: Collects distinct `start_date` and `end_date` coordinates via date pickers.
+   - **Interactive Live Preview**: Renders a mockup of the public tournament card in real-time as the admin types.
+   - **Conditional Stat Inputs**: Displays actual attendance stats inputs (Participants, Nations, Clubs, Records) for past and live tournaments; upcoming tournaments have no stats input fields.
+3. **Cascade-Aware Safety Deletion**: Deleting a tournament triggers a verification modal:
+   - Calls the impact counting API to calculate affected records.
+   - Summarizes the cascading delete impact (swimming results and water polo standings) and history entries that will be reset to null.
+   - Requires the administrator to type the tournament's name exactly to confirm.
+
+### Backend CRUD APIs
+- **GET `/api/admin/tournaments/impact`**: Queries the database using `better-sqlite3` to count referencing records across `swimming_results`, `water_polo_teams`, and `club_tournament_history` for a specified `id`.
+- **POST `/api/admin/tournaments/save`**: Handles atomic inserts and updates. Validates required fields, validates that the tournament type is matching config list options, checks for duplicate IDs, and updates the SQLite database.
+- **POST `/api/admin/tournaments/delete`**: Executes the database deletion. SQLite foreign key constraints (`ON DELETE CASCADE` / `ON DELETE SET NULL`) automatically handle cleaning up related tables.
+
+---
+
+## 9. Results & Roster Management Console
+
+The Results Management Console (`/admin/results`) lets administrators correct and curate individual performance data after ingestion, for both swimming and water polo.
+
+### Key Operations & Features
+1. **Tournament-Scoped Editing**: The page loads the list of tournaments (most recent first) as a selector; results are reviewed and edited in the context of a chosen championship.
+2. **Edit Result Modal**: The shared [EditResultModal](file:///Users/mwillmott/Antigravity/igla-records/src/app/components/EditResultModal.tsx) component edits a single record in place:
+   - **Swimming results** — event, course, age/gender category, time, place, record flags (`is_all_time_record`, `record_still_held`), athlete linkage, and the "broken by" athlete reference.
+   - **Water polo teams** — team name, club, division, final placement, and the win/loss/goals/points statistics.
+3. **Water Polo Roster Editing**: Rosters for a water polo team can be edited inline. Adding a player supports either selecting an existing athlete or **creating a brand-new athlete profile on the fly** (auto-generating a slug ID, defaulting pronouns/hometown), all within a single atomic transaction. Duplicate-roster and missing-team conditions are rejected with descriptive errors.
+4. **Audit Trail**: Every edit stamps `updated_by` (the acting admin's email) and `updated_at`, which surface in the UI as a "who/when" indicator (see §6).
+
+### Backend APIs
+- **POST `/api/admin/records/update`**: Updates a single `swimming` or `wp` record by `id`, writing audit columns. Returns 404 if the target row does not exist.
+- **POST `/api/admin/records/delete`**: Deletes a single swimming result or water polo team.
+- **POST `/api/admin/roster/add`**: Adds an athlete (existing or newly created) to a water polo roster with cap number and captain flag, inside a transaction.
+- **POST `/api/admin/roster/delete`**: Removes an athlete from a roster.
+
+### Placeholder Admin Panels
+Two further panels exist in the navigation but are intentional stubs marked *"scheduled for development in Phase 4"*:
+- **`/admin/athletes`** — planned profile verification, results-to-athlete linking, and pronoun/hometown editing.
+- **`/admin/settings`** — planned admin-account management and global configuration (e.g. age-category rules).
+
+---
+
+## 10. Directory Structures
 
 ```
 ├── design-handoff/           # Legacy prototypes and static datasets
 ├── scripts/
 │   ├── seed.js               # SQL seeding script parsing handoff arrays into sqlite
-│   └── find-empty-pills.js   # Utility validation check script
+│   ├── find-empty-pills.js   # Utility validation check script
+│   └── test-endpoints.js     # API endpoint smoke-test script
 ├── src/
 │   ├── db/
 │   │   ├── index.ts          # Database instance initialization (better-sqlite3)
 │   │   └── schema.sql        # Database schema DDL
 │   ├── lib/
-│   │   └── auth.ts           # AES-256-GCM cookie session encryption handlers
+│   │   ├── auth.ts           # AES-256-GCM cookie session + Google OAuth helpers
+│   │   └── config.ts         # Centralized lists (sports, regions, age categories,
+│   │                         #   water polo divisions, tournament types)
 │   └── app/
 │       ├── layout.tsx        # Next.js global layout
 │       ├── globals.css       # Full G3 CSS design system
-│       ├── admin/            # Ingestion dashboard and components
-│       ├── api/              # backend API handlers (records, uploads, resolutions)
-│       ├── athletes/         # Athlete profile detail routes
-│       ├── clubs/            # Club listing and detail routes
-│       ├── results/          # Records dashboard routes
-│       └── tournaments/      # Tournament listing and detail routes
+│       ├── components/       # Shared UI (Header.tsx, EditResultModal.tsx)
+│       ├── (public)/         # Public route group (shared public layout)
+│       │   ├── athletes/     # Athlete profile detail routes
+│       │   ├── clubs/        # Club listing and detail routes
+│       │   ├── results/      # Records dashboard routes
+│       │   └── tournaments/  # Tournament listing and detail routes
+│       ├── admin/            # Admin panels: ingestion (page.tsx), clubs, tournaments,
+│       │                     #   results, athletes (stub), settings (stub)
+│       └── api/
+│           ├── auth/         # login, callback (OAuth + mock), session, logout
+│           └── admin/        # upload, resolve, records, roster, clubs, tournaments
 └── igla.db                   # SQLite database
 ```
