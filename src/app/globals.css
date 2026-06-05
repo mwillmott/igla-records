@@ -69,7 +69,7 @@ html, body {
 }
 
 button { font-family: inherit; cursor: pointer; }
-input { font-family: inherit; }
+input, select, textarea { font-family: inherit; }
 
 /* ─────────────────────────────────────────────────────────
    App shell
@@ -1590,7 +1590,7 @@ input { font-family: inherit; }
 .ta { resize: none; min-height: 64px; line-height: 1.4; }
 .sel-wrap { position: relative; }
 .sel-wrap .chev { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--ink-2); pointer-events: none; }
-.sel { appearance: none; padding-right: 32px; cursor: pointer; }
+.sel, .sel-wrap select { appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 32px; cursor: pointer; }
 .field .hint { font-size: 10.5px; color: var(--ink-3); }
 .field .hint.ok { color: #2f8f57; display: inline-flex; align-items: center; gap: 5px; }
 .field .hint.warn { color: var(--coral-deep); display: inline-flex; align-items: center; gap: 5px; }

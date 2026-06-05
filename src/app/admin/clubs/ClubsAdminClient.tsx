@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Search, Plus, Edit, Trash2, Globe, MapPin, Trophy, X, 
-  ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, 
+  ChevronLeft, ChevronRight, ChevronDown, AlertCircle, CheckCircle2, 
   HelpCircle, Waves, Target, ShieldAlert, Save, ExternalLink
 } from 'lucide-react';
 import { AQUATIC_SPORTS, REGIONS } from '@/lib/config';
@@ -432,14 +432,14 @@ export default function ClubsAdminClient({ clubs: initialClubs }: ClubsAdminClie
             <select
               value={regionFilter}
               onChange={e => setRegionFilter(e.target.value)}
-              className="sel h-10 text-xs px-3 bg-white border-2 border-ink rounded-xl font-semibold w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
+              className="h-10 text-xs px-3 bg-white border-2 border-ink rounded-xl font-semibold w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
             >
               <option value="All">All Regions</option>
               {REGIONS.map(r => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
-            <ChevronRight size={12} className="chev rotate-90" />
+            <ChevronDown size={12} className="chev" />
           </div>
         </div>
 
@@ -450,14 +450,14 @@ export default function ClubsAdminClient({ clubs: initialClubs }: ClubsAdminClie
             <select
               value={sportFilter}
               onChange={e => setSportFilter(e.target.value)}
-              className="sel h-10 text-xs px-3 bg-white border-2 border-ink rounded-xl font-semibold w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
+              className="h-10 text-xs px-3 bg-white border-2 border-ink rounded-xl font-semibold w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
             >
               <option value="All">All Sports</option>
               {AQUATIC_SPORTS.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-            <ChevronRight size={12} className="chev rotate-90" />
+            <ChevronDown size={12} className="chev" />
           </div>
         </div>
 
@@ -827,7 +827,7 @@ export default function ClubsAdminClient({ clubs: initialClubs }: ClubsAdminClie
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
-                      <ChevronRight size={14} className="chev rotate-90" />
+                      <ChevronDown size={14} className="chev" />
                     </div>
                   </div>
 

@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import db from '@/db';
+import TournamentsAdminClient from './TournamentsAdminClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,27 +34,8 @@ export default async function AdminTournamentsPage() {
     );
   }
 
-  return (
-    <div className="animate-fadeIn">
-      <div className="admin-pagehead">
-        <div>
-          <h1>Manage <em>Tournaments</em></h1>
-          <div className="sub">Create new tournaments or edit tournament metadata.</div>
-        </div>
-      </div>
-      
-      <div className="tile p-8 bg-white border-2 border-ink shadow-[4px_5px_0_#0d3a52] text-center max-w-lg mx-auto mt-8 select-none">
-        <h3 className="font-display text-2xl text-ink font-normal mb-2">Tournaments Panel</h3>
-        <p className="text-xs text-ink-3 leading-relaxed mb-6">
-          This panel is scheduled for development in Phase 3. Here you will be able to create new tournaments, update dates, configure locations, and assign colors.
-        </p>
-        <Link 
-          href="/admin" 
-          className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
-        >
-          <span>Back to Dashboard</span>
-        </Link>
-      </div>
-    </div>
-  );
+  // Load all tournaments ordered by year descending
+  const tournaments = db.prepare('SELECT * FROM tournaments ORDER BY year DESC').all();
+
+  return <TournamentsAdminClient tournaments={tournaments as any[]} />;
 }

@@ -99,22 +99,22 @@ export default function AdminClient({ stats, adminName }: AdminClientProps) {
               </div>
               <ChevronRight size={14} className="chev" />
             </button>
-            <button type="button" className="qa" onClick={() => alert('Add/Edit Tournament functionality is scheduled for Phase 3.')}>
+            <Link href="/admin/tournaments" className="qa">
               <span className="ic"><Trophy size={15} /></span>
               <div>
                 <div className="lbl">Add New Tournament</div>
                 <div className="desc">Set up dates, venue, and logo colors</div>
               </div>
               <ChevronRight size={14} className="chev" />
-            </button>
-            <button type="button" className="qa" onClick={() => alert('Add/Edit Club functionality is scheduled for Phase 3.')}>
+            </Link>
+            <Link href="/admin/clubs" className="qa">
               <span className="ic"><Users size={15} /></span>
               <div>
                 <div className="lbl">Create Club Profile</div>
                 <div className="desc">Register a new IGLA+ member club</div>
               </div>
               <ChevronRight size={14} className="chev" />
-            </button>
+            </Link>
           </div>
         </div>
 

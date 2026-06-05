@@ -4,19 +4,53 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, ChevronRight, Trophy } from 'lucide-react';
 
+export function formatTournamentDates(startDateStr: string, endDateStr: string) {
+  if (!startDateStr || !endDateStr) return '';
+  const parseParts = (str: string) => {
+    const parts = str.split('-');
+    if (parts.length !== 3) return null;
+    return {
+      year: parseInt(parts[0], 10),
+      month: parseInt(parts[1], 10) - 1,
+      day: parseInt(parts[2], 10)
+    };
+  };
+  const start = parseParts(startDateStr);
+  const end = parseParts(endDateStr);
+  if (!start || !end) return `${startDateStr} – ${endDateStr}`;
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const startMonth = monthNames[start.month];
+  const endMonth = monthNames[end.month];
+
+  if (start.year !== end.year) {
+    return `${startMonth} ${start.day}, ${start.year} – ${endMonth} ${end.day}, ${end.year}`;
+  }
+  if (start.month !== end.month) {
+    return `${startMonth} ${start.day} – ${endMonth} ${end.day}, ${start.year}`;
+  }
+  if (start.day !== end.day) {
+    return `${startMonth} ${start.day} – ${end.day}, ${start.year}`;
+  }
+  return `${startMonth} ${start.day}, ${start.year}`;
+}
+
 interface Tournament {
   id: string;
   name: string;
-  co_name: string;
+  type: string;
   city: string;
   country: string;
   flag: string;
   year: number;
-  dates: string;
+  start_date: string;
+  end_date: string;
   status: 'live' | 'upcoming' | 'past';
   color: string;
   website: string | null;
-  podium: string | null;
   venue: string | null;
   description: string | null;
   expected_athletes: number | null;
@@ -118,7 +152,7 @@ export default function TournamentsClient({ tournaments }: TournamentsClientProp
             <em>{nextUp.city}</em> <span className="hl">{nextUp.year}</span>
           </h2>
           <div className="font-display italic text-lg text-white/85 mb-4">
-            {nextUp.co_name}
+            {nextUp.type}
           </div>
           
           <div className="hero-meta flex flex-wrap gap-x-6 gap-y-2 mt-4 text-xs text-white/90">
@@ -127,7 +161,7 @@ export default function TournamentsClient({ tournaments }: TournamentsClientProp
               <span>{nextUp.city}, {nextUp.country}</span>
             </span>
             <span className="hero-meta-item flex items-center gap-1.5">
-              <Calendar size={14} /> <span>{nextUp.dates}</span>
+              <Calendar size={14} /> <span>{formatTournamentDates(nextUp.start_date, nextUp.end_date)}</span>
             </span>
             <span className="hero-meta-item flex items-center gap-1.5">
               <MapPin size={14} /> <span>{nextUp.venue}</span>
@@ -186,7 +220,6 @@ export default function TournamentsClient({ tournaments }: TournamentsClientProp
       {/* Championships Table List */}
       <div className="tournament-list">
         {list.map((t) => {
-          const podiumList = t.podium ? t.podium.split(',') : [];
           return (
             <Link
               key={t.id}
@@ -204,10 +237,10 @@ export default function TournamentsClient({ tournaments }: TournamentsClientProp
                   <span className="text-base leading-none select-none">{t.flag}</span>
                   <span>{t.name}</span>
                 </div>
-                <div className="t-co font-display italic text-xs text-ink-3 mt-0.5">{t.co_name}</div>
+                <div className="t-co font-display italic text-xs text-ink-3 mt-0.5">{t.type}</div>
                 <div className="t-loc text-[11px] text-ink-2 mt-1.5 flex flex-wrap gap-x-3">
                   <span>{t.city}, {t.country}</span>
-                  <span className="text-ink-3">{t.dates}</span>
+                  <span className="text-ink-3">{formatTournamentDates(t.start_date, t.end_date)}</span>
                 </div>
               </div>
 

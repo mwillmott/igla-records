@@ -49,3 +49,10 @@ export const REGIONS = [
 ] as const;
 
 export type Region = typeof REGIONS[number];
+
+export const TOURNAMENT_TYPES = [
+  'IGLA+ Championship',
+  'Gay Games'
+] as const;
+
+export type TournamentType = typeof TOURNAMENT_TYPES[number];
