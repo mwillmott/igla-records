@@ -49,7 +49,7 @@ export default function Header({ session }: HeaderProps) {
           ))}
         </nav>
         
-        <div className="topbar-actions relative">
+        <div className="topbar-actions relative z-20">
           {session ? (
             <div className="flex items-center gap-3">
               {session.role === 'admin' && (
@@ -64,8 +64,9 @@ export default function Header({ session }: HeaderProps) {
               )}
               
               <button 
+                type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="avatar cursor-pointer select-none focus:outline-none flex items-center justify-center font-bold text-sm"
+                className="avatar cursor-pointer focus:outline-none flex items-center justify-center font-bold text-sm touch-manipulation"
                 title={`${session.name} (${session.email})`}
               >
                 {session.avatar || 'U'}
@@ -73,8 +74,9 @@ export default function Header({ session }: HeaderProps) {
             </div>
           ) : (
             <button 
+              type="button"
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="pill active flex items-center gap-1.5 bg-ink text-white font-semibold text-xs py-1.5 px-3 rounded-full hover:bg-ink-2 transition-all cursor-pointer"
+              className="pill active flex items-center gap-1.5 text-white font-semibold text-xs py-1.5 px-3 rounded-full transition-all cursor-pointer touch-manipulation"
             >
               <span>Sign In</span>
               <ChevronDown size={13} />

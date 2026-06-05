@@ -145,7 +145,9 @@ input, select, textarea { font-family: inherit; }
   border: 2px solid transparent;
   transition: background 140ms ease;
 }
-.topbar nav a:hover { background: var(--aqua-pale); }
+@media (hover: hover) {
+  .topbar nav a:hover { background: var(--aqua-pale); }
+}
 .topbar nav a.active {
   background: var(--ink);
   color: white;
@@ -166,7 +168,9 @@ input, select, textarea { font-family: inherit; }
   transition: background 140ms ease;
   box-shadow: var(--tile-shadow-sm);
 }
-.icon-btn:hover { background: var(--aqua-pale); }
+@media (hover: hover) {
+  .icon-btn:hover { background: var(--aqua-pale); }
+}
 .icon-btn:active { transform: translate(1px, 1px); box-shadow: 1px 2px 0 var(--ink); }
 
 .avatar {
@@ -238,7 +242,9 @@ input, select, textarea { font-family: inherit; }
   user-select: none;
   transition: background 140ms ease;
 }
-.pill:hover { background: var(--aqua-pale); }
+@media (hover: hover) {
+  .pill:hover { background: var(--aqua-pale); }
+}
 .pill.active {
   background: var(--ink);
   color: white;
@@ -251,9 +257,11 @@ input, select, textarea { font-family: inherit; }
   color: white;
   border-color: var(--ink);
 }
-.pill.danger:hover {
-  background: #b5381a;
-  color: white;
+@media (hover: hover) {
+  .pill.danger:hover {
+    background: #b5381a;
+    color: white;
+  }
 }
 .pill.aqua {
   background: var(--aqua); color: white;
@@ -1101,10 +1109,14 @@ input, select, textarea { font-family: inherit; }
   cursor: pointer;
   box-shadow: var(--tile-shadow-sm);
 }
-.btn:hover { background: var(--aqua-pale); }
+@media (hover: hover) {
+  .btn:hover { background: var(--aqua-pale); }
+}
 .btn:active { transform: translate(1px, 2px); box-shadow: 1px 2px 0 var(--ink); }
 .btn.coral { background: var(--coral); color: white; }
-.btn.coral:hover { background: var(--coral-deep); }
+@media (hover: hover) {
+  .btn.coral:hover { background: var(--coral-deep); }
+}
 .btn.success {
   background: #5eb87a;
   color: white;
