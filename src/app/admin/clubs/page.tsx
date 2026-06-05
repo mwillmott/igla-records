@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import db from '@/db';
+import ClubsAdminClient from './ClubsAdminClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,27 +34,20 @@ export default async function AdminClubsPage() {
     );
   }
 
-  return (
-    <div className="animate-fadeIn">
-      <div className="admin-pagehead">
-        <div>
-          <h1>Manage <em>Clubs</em></h1>
-          <div className="sub">Add, edit, or remove member clubs from the database.</div>
-        </div>
-      </div>
-      
-      <div className="tile p-8 bg-white border-2 border-ink shadow-[4px_5px_0_#0d3a52] text-center max-w-lg mx-auto mt-8 select-none">
-        <h3 className="font-display text-2xl text-ink font-normal mb-2">Clubs Management Panel</h3>
-        <p className="text-xs text-ink-3 leading-relaxed mb-6">
-          This panel is scheduled for development in Phase 3. Here you will be able to create new clubs, edit club colors, details, and taglines.
-        </p>
-        <Link 
-          href="/admin" 
-          className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
-        >
-          <span>Back to Dashboard</span>
-        </Link>
-      </div>
-    </div>
-  );
+  // Load all clubs with aggregate historical medal stats
+  const clubs = db.prepare(`
+    SELECT 
+      c.*,
+      COALESCE(SUM(h.medals_gold), 0) AS gold,
+      COALESCE(SUM(h.medals_silver), 0) AS silver,
+      COALESCE(SUM(h.medals_bronze), 0) AS bronze,
+      COALESCE(SUM(h.records_set), 0) AS records,
+      COUNT(h.club_id) AS tournamentsAttended
+    FROM clubs c
+    LEFT JOIN club_tournament_history h ON c.id = h.club_id
+    GROUP BY c.id
+    ORDER BY c.name ASC
+  `).all();
+
+  return <ClubsAdminClient clubs={clubs as any[]} />;
 }

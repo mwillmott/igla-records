@@ -299,7 +299,29 @@ The visual design system is defined as custom properties in [globals.css](file:/
 
 ---
 
-## 7. Directory Structures
+## 7. Clubs Management Console
+
+The Clubs Management Console (`/admin/clubs`) provides a full-featured administrative interface for managing member organizations.
+
+### Key Operations & Features
+1. **Dynamic List View**: Displays all member clubs with client-side sorting (by Name, Members, Founded, and Medals), pagination, real-time query searching (across Name, City, Country, and Tagline), and centralized filter selectors (by Region and Sport).
+2. **Add & Edit Drawer**: A side-drawer interface for club profile creation and modification:
+   - **Auto-slug ID**: Creates a slug-formatted unique ID from the club name automatically for new clubs, but permits manual adjustment. Once saved, the ID slug is locked to protect foreign-key database constraints.
+   - **Interactive Live Preview**: Renders a mockup of the public club card in real-time as the admin types.
+   - **Centralized Configurations**: Uses single-source-of-truth lists for regions and aquatic disciplines from [config.ts](file:///Users/mwillmott/Antigravity/igla-records/src/lib/config.ts).
+3. **Cascade-Aware Safety Deletion**: Deleting a club triggers a verification modal:
+   - Calls the impact counting API to calculate affected records.
+   - Summarizes the cascading delete impact (swimming results, water polo teams, and history entries) and athlete affiliations that will be reset.
+   - Requires the administrator to type the club's short name exactly to confirm.
+
+### Backend CRUD APIs
+- **GET `/api/admin/clubs/impact`**: Queries the database using `better-sqlite3` to count referencing records across `swimming_results`, `water_polo_teams`, `club_tournament_history`, and `athletes` for a specified `id`.
+- **POST `/api/admin/clubs/save`**: Handles atomic inserts and updates. Restructures snake_case payload variables to align with required database columns and runs transaction validation checks.
+- **POST `/api/admin/clubs/delete`**: Executes the database deletion. SQLite foreign key constraints (`ON DELETE CASCADE` / `ON DELETE SET NULL`) automatically handle cleaning up related tables.
+
+---
+
+## 8. Directory Structures
 
 ```
 ├── design-handoff/           # Legacy prototypes and static datasets
@@ -311,12 +333,13 @@ The visual design system is defined as custom properties in [globals.css](file:/
 │   │   ├── index.ts          # Database instance initialization (better-sqlite3)
 │   │   └── schema.sql        # Database schema DDL
 │   ├── lib/
-│   │   └── auth.ts           # AES-256-GCM cookie session encryption handlers
+│   │   ├── auth.ts           # AES-256-GCM cookie session encryption handlers
+│   │   └── config.ts         # Centralized global lists (sports, regions, age categories)
 │   └── app/
 │       ├── layout.tsx        # Next.js global layout
 │       ├── globals.css       # Full G3 CSS design system
-│       ├── admin/            # Ingestion dashboard and components
-│       ├── api/              # backend API handlers (records, uploads, resolutions)
+│       ├── admin/            # Ingestion & Clubs Management dashboard panels
+│       ├── api/              # Backend API handlers (records, uploads, clubs CRUD)
 │       ├── athletes/         # Athlete profile detail routes
 │       ├── clubs/            # Club listing and detail routes
 │       ├── results/          # Records dashboard routes

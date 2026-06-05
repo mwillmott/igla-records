@@ -1483,6 +1483,7 @@ input { font-family: inherit; }
 .dt .flag { font-size: 20px; line-height: 1; }
 .dt .t-nm { font-weight: 600; font-size: 13px; white-space: nowrap; }
 .dt .t-co { font-family: var(--font-display); font-style: italic; font-size: 12px; color: var(--ink-3); margin-top: 1px; white-space: nowrap; }
+.dt .club-id { font-family: var(--font-mono); font-style: normal; font-size: 10px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; }
 .dt .muted { color: var(--ink-3); white-space: nowrap; }
 .dt thead th:nth-child(2) { width: 30%; }
 .dt .num { text-align: right; font-family: var(--font-mono); }
