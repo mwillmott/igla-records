@@ -3,10 +3,13 @@ import { cookies } from 'next/headers';
 import { encryptSession, UserSession } from '@/lib/auth';
 
 export async function GET(request: Request) {
+  const host = request.headers.get('host') || 'localhost:3000';
+  const protocol = request.headers.get('x-forwarded-proto') || 'http';
+  const origin = `${protocol}://${host}`;
+
   const { searchParams } = new URL(request.url);
   const mockType = searchParams.get('mock');
   const code = searchParams.get('code');
-  const origin = new URL(request.url).origin;
 
   let sessionUser: UserSession | null = null;
 
@@ -97,9 +100,9 @@ export async function GET(request: Request) {
 
     // Redirect to Admin dashboard if Admin, otherwise Results
     const redirectPath = sessionUser.role === 'admin' ? '/admin' : '/results';
-    return NextResponse.redirect(new URL(redirectPath, request.url));
+    return NextResponse.redirect(new URL(redirectPath, origin));
   }
 
   // Fallback if auth fails
-  return NextResponse.redirect(new URL('/results?auth_error=true', request.url));
+  return NextResponse.redirect(new URL('/results?auth_error=true', origin));
 }
