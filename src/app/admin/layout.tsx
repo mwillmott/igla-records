@@ -50,7 +50,7 @@ export default async function AdminLayout({
   const initials = session.name ? session.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'AD';
 
   return (
-    <div className="admin-shell min-h-screen">
+    <div className="admin-shell h-dvh overflow-hidden">
       {/* Sidebar Navigation */}
       <aside className="admin-sidebar">
         <div className="admin-brand">
