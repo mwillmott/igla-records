@@ -376,13 +376,36 @@ The Results Management Console (`/admin/results`) lets administrators correct an
 - **POST `/api/admin/roster/delete`**: Removes an athlete from a roster.
 
 ### Placeholder Admin Panels
-Two further panels exist in the navigation but are intentional stubs marked *"scheduled for development in Phase 4"*:
-- **`/admin/athletes`** — planned profile verification, results-to-athlete linking, and pronoun/hometown editing.
+One further panel exists in the navigation but is an intentional stub marked *"scheduled for development in Phase 4"*:
 - **`/admin/settings`** — planned admin-account management and global configuration (e.g. age-category rules).
 
 ---
 
-## 10. Directory Structures
+## 10. Athletes Management Console
+
+The Athletes Management Console (`/admin/athletes`) provides a full-featured administrative interface for managing registered athlete profiles.
+
+### Key Operations & Features
+1. **Dynamic List View**: Displays all athletes with client-side sorting (by Name, Club, Claim Status, and Results), pagination, real-time query searching (across Name, ID, Hometown, Email, and Club Name), and status filtering (by Club, Claim Status, and Sport Discipline).
+2. **Dedicated Email & Status Columns**: Displays the athlete's email (if provided) in a dedicated column with `mailto:` links, alongside a colored badge indicating claim status.
+3. **Add & Edit Drawer**: A side-drawer interface for athlete profile creation and modification:
+   - **Auto-slug ID**: Creates a slug-formatted unique ID from the athlete name automatically on creation, but permits manual adjustment. Once saved, the ID slug is locked to protect foreign-key database constraints.
+   - **Pronouns Dropdown**: Uses centralized pronoun presets defined in [config.ts](file:///Users/mwillmott/Antigravity/igla-records/src/lib/config.ts), with a toggle for custom pronoun write-ins.
+   - **Optional Email Field**: Allows optional association of an email address to the profile, which enforces strict uniqueness checking.
+   - **Interactive Live Preview**: Renders a mockup of the public athlete card profile in real-time as the admin types.
+4. **Cascade-Aware Safety Deletion**: Deleting an athlete triggers a verification modal:
+   - Calls the impact counting API to calculate affected records.
+   - Summarizes the cascading delete/nulling impact (swim results unlinked, records broken by unlinked, and water polo roster spots deleted).
+   - Requires the administrator to type the athlete's name exactly to confirm.
+
+### Backend CRUD APIs
+- **GET `/api/admin/athletes/impact`**: Queries the database using `better-sqlite3` to count referencing records across `swimming_results` and `water_polo_rosters` for a specified `id`.
+- **POST `/api/admin/athletes/save`**: Handles atomic inserts and updates. Restructures snake_case payload variables to align with required database columns, checks for duplicate IDs, validates email formatting, and enforces email uniqueness checks.
+- **POST `/api/admin/athletes/delete`**: Executes the database deletion. SQLite foreign key constraints handle cleanups or nulling related records.
+
+---
+
+## 11. Directory Structures
 
 ```
 ├── design-handoff/           # Legacy prototypes and static datasets
@@ -397,7 +420,7 @@ Two further panels exist in the navigation but are intentional stubs marked *"sc
 │   ├── lib/
 │   │   ├── auth.ts           # AES-256-GCM cookie session + Google OAuth helpers
 │   │   └── config.ts         # Centralized lists (sports, regions, age categories,
-│   │                         #   water polo divisions, tournament types)
+│   │                         #   water polo divisions, tournament types, pronouns)
 │   └── app/
 │       ├── layout.tsx        # Next.js global layout
 │       ├── globals.css       # Full G3 CSS design system
@@ -408,9 +431,9 @@ Two further panels exist in the navigation but are intentional stubs marked *"sc
 │       │   ├── results/      # Records dashboard routes
 │       │   └── tournaments/  # Tournament listing and detail routes
 │       ├── admin/            # Admin panels: ingestion (page.tsx), clubs, tournaments,
-│       │                     #   results, athletes (stub), settings (stub)
+│       │                     #   results, athletes, settings (stub)
 │       └── api/
 │           ├── auth/         # login, callback (OAuth + mock), session, logout
-│           └── admin/        # upload, resolve, records, roster, clubs, tournaments
+│           └── admin/        # upload, resolve, records, roster, clubs, tournaments, athletes
 └── igla.db                   # SQLite database
 ```

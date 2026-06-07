@@ -56,3 +56,14 @@ export const TOURNAMENT_TYPES = [
 ] as const;
 
 export type TournamentType = typeof TOURNAMENT_TYPES[number];
+
+export const PRONOUNS = [
+  'she/her',
+  'he/him',
+  'they/them',
+  'she/they',
+  'he/they'
+] as const;
+
+export type Pronouns = typeof PRONOUNS[number];
+

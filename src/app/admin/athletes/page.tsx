@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import db from '@/db';
+import AthletesAdminClient from './AthletesAdminClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,27 +34,23 @@ export default async function AdminAthletesPage() {
     );
   }
 
-  return (
-    <div className="animate-fadeIn">
-      <div className="admin-pagehead">
-        <div>
-          <h1>Manage <em>Athletes</em></h1>
-          <div className="sub">Verify profiles, edit pronouns, joined year, and claim statuses.</div>
-        </div>
-      </div>
-      
-      <div className="tile p-8 bg-white border-2 border-ink shadow-[4px_5px_0_#0d3a52] text-center max-w-lg mx-auto mt-8 select-none">
-        <h3 className="font-display text-2xl text-ink font-normal mb-2">Athletes Panel</h3>
-        <p className="text-xs text-ink-3 leading-relaxed mb-6">
-          This panel is scheduled for development in Phase 4. Here you will be able to review claimed profiles, link results to athlete accounts, edit athlete hometowns, and manage pronouns.
-        </p>
-        <Link 
-          href="/admin" 
-          className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2.5 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
-        >
-          <span>Back to Dashboard</span>
-        </Link>
-      </div>
-    </div>
-  );
+  // Load all athletes with club names, flags, and result counts
+  const athletes = db.prepare(`
+    SELECT 
+      a.*,
+      c.name AS club_name,
+      c.flag AS club_flag,
+      (SELECT COUNT(*) FROM swimming_results r WHERE r.athlete_id = a.id) AS swim_count,
+      (SELECT COUNT(*) FROM water_polo_rosters w WHERE w.athlete_id = a.id) AS wp_count
+    FROM athletes a
+    LEFT JOIN clubs c ON a.current_club_id = c.id
+    ORDER BY a.name ASC
+  `).all();
+
+  // Load all clubs for selection and filtering dropdowns
+  const clubs = db.prepare(`
+    SELECT id, name, flag FROM clubs ORDER BY name ASC
+  `).all();
+
+  return <AthletesAdminClient athletes={athletes as any[]} clubs={clubs as any[]} />;
 }

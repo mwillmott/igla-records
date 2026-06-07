@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Waves, Search, Bell, Shield, LogOut, ChevronDown, User } from 'lucide-react';
+import { Waves, Search, Bell, Shield, LogOut, ChevronDown, User, Menu, X } from 'lucide-react';
 import { UserSession } from '@/lib/auth';
 
 interface HeaderProps {
@@ -13,6 +13,7 @@ interface HeaderProps {
 export default function Header({ session }: HeaderProps) {
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const navItems = [
     { href: '/clubs', label: 'Clubs' },
@@ -29,6 +30,16 @@ export default function Header({ session }: HeaderProps) {
 
   const activeTab = getActiveTab();
 
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+    if (menuOpen) setMenuOpen(false);
+  };
+
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
+    if (dropdownOpen) setDropdownOpen(false);
+  };
+
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -37,12 +48,13 @@ export default function Header({ session }: HeaderProps) {
           <span className="brand-text">IGLA<span className="plus">+</span> Records</span>
         </Link>
         
-        <nav>
+        <nav className={menuOpen ? 'mobile-open' : 'mobile-closed'}>
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={activeTab === item.href ? 'active' : ''}
+              onClick={() => setMenuOpen(false)}
             >
               {item.label}
             </Link>
@@ -65,7 +77,7 @@ export default function Header({ session }: HeaderProps) {
               
               <button 
                 type="button"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
+                onClick={toggleDropdown}
                 className="avatar cursor-pointer focus:outline-none flex items-center justify-center font-bold text-sm touch-manipulation"
                 title={`${session.name} (${session.email})`}
               >
@@ -75,13 +87,23 @@ export default function Header({ session }: HeaderProps) {
           ) : (
             <button 
               type="button"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={toggleDropdown}
               className="pill active flex items-center gap-1.5 text-white font-semibold text-xs py-1.5 px-3 rounded-full transition-all cursor-pointer touch-manipulation"
             >
               <span>Sign In</span>
               <ChevronDown size={13} />
             </button>
           )}
+
+          {/* Hamburger toggle button, visible on mobile only */}
+          <button
+            type="button"
+            onClick={toggleMenu}
+            className="icon-btn mobile-menu-toggle touch-manipulation"
+            aria-label={menuOpen ? 'Close Menu' : 'Open Menu'}
+          >
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
 
           {/* User Auth and Simulation Dropdown Menu */}
           {dropdownOpen && (
