@@ -1,4 +1,19 @@
 @import "tailwindcss";
+
+@theme {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-aqua: var(--aqua);
+  --color-aqua-sky: var(--aqua-sky);
+  --color-aqua-pale: var(--aqua-pale);
+  --color-coral: var(--coral);
+  --color-coral-deep: var(--coral-deep);
+  --color-coral-pale: var(--coral-pale);
+}
+
 /* IGLA+ Records — G3 (Splash · Depth) design system */
 
 :root {
@@ -1383,6 +1398,50 @@ input, select, textarea { font-family: inherit; }
 .admin-navitem.active .ic { opacity: 1; }
 .admin-navitem.active .ct { background: var(--bg-2); color: var(--ink); }
 
+.admin-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 14px;
+  margin-left: 20px;
+  border-left: 1.5px solid rgba(255,255,255,0.15);
+  margin-bottom: 6px;
+  margin-top: 2px;
+}
+.admin-subnavitem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: rgba(255,255,255,0.65);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 140ms ease;
+  text-decoration: none;
+}
+.admin-subnavitem:hover {
+  background: rgba(255,255,255,0.06);
+  color: white;
+}
+.admin-subnavitem.active {
+  background: rgba(255,255,255,0.12);
+  color: var(--aqua-sky);
+  font-weight: 600;
+}
+.admin-subnavitem .ic {
+  opacity: 0.8;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.admin-subnavitem.active .ic {
+  opacity: 1;
+}
+
+
 .admin-sidebar-foot {
   margin-top: auto;
   padding-top: 14px;
@@ -1852,4 +1911,51 @@ input, select, textarea { font-family: inherit; }
   background: var(--coral); border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
 }
 .callout.up::after { top: -7px; left: 24px; transform: rotate(-135deg); border-right-color: var(--coral); }
+
+/* ─────────────────────────────────────────────────────────
+   Tailwind custom color utility overrides for G3 system
+   ───────────────────────────────────────────────────────── */
+.bg-coral {
+  background-color: var(--coral) !important;
+}
+.bg-bg-2 {
+  background-color: var(--bg-2) !important;
+}
+.text-ink {
+  color: var(--ink) !important;
+}
+.text-ink-2 {
+  color: var(--ink-2) !important;
+}
+.text-ink-3 {
+  color: var(--ink-3) !important;
+}
+.border-ink {
+  border-color: var(--ink) !important;
+}
+.border-ink\/20 {
+  border-color: rgba(13, 58, 82, 0.2) !important;
+}
+.border-ink\/10 {
+  border-color: rgba(13, 58, 82, 0.1) !important;
+}
+.bg-coral-pale {
+  background-color: var(--coral-pale) !important;
+}
+.text-coral-deep {
+  color: var(--coral-deep) !important;
+}
+.border-coral {
+  border-color: var(--coral) !important;
+}
+.bg-bg\/15 {
+  background-color: rgba(234, 244, 247, 0.15) !important;
+}
+.bg-bg\/20 {
+  background-color: rgba(234, 244, 247, 0.20) !important;
+}
+.border-coral\/30 {
+  border-color: rgba(255, 111, 80, 0.3) !important;
+}
+
 

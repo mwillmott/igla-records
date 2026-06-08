@@ -362,14 +362,29 @@ The Tournaments Management Console (`/admin/tournaments`) provides a full-featur
 The Results Management Console (`/admin/results`) lets administrators correct and curate individual performance data after ingestion, for both swimming and water polo.
 
 ### Key Operations & Features
-1. **Tournament-Scoped Editing**: The page loads the list of tournaments (most recent first) as a selector; results are reviewed and edited in the context of a chosen championship.
-2. **Edit Result Modal**: The shared [EditResultModal](file:///Users/mwillmott/Antigravity/igla-records/src/app/components/EditResultModal.tsx) component edits a single record in place:
+1. **Dynamic Server-Side Querying & Pagination**:
+   * To support large datasets (e.g. 3,000+ swimming results), filtering, sorting, and pagination (`LIMIT`/`OFFSET` queries) are handled entirely on the server.
+   * Client interactions synchronize state with the URL using Next.js routing parameters.
+   * A 250ms debouncer prevents excessive server requests while typing in the search bar.
+   * React 19 `useTransition` manages search state updates, displaying a neobrutalist glassmorphic loading spinner overlaying the results table during data fetches.
+2. **Multi-Championship Querying**:
+   * Supports a championship selector value of `'All'`, which bypasses specific tournament filters and allows administrators to query, search, and sort across all championships globally.
+3. **Restructured Two-Row Filter Toolbar**:
+   * **Top Row**: Contains the `Championship Event` dropdown (with a Trophy icon box prefix next to it) on the left, and the `Search Results` input on the right. Both inputs are nested under top-level baseline-aligned labels.
+   * **Bottom Row**: Groups secondary filters (`Course`, `Age Group`, `Gender Category`, `Record Status`, or `Division` depending on sport mode). It includes a dynamic "Clear Filters" button on the far right that appears when filters are active.
+   * Height constraints (`h-10` / `40px` heights) are locked on selectors and buttons, and the search container uses inline `style={{ flex: 'none' }}` to prevent height collapses.
+4. **Water Polo Standings & Roster Counts**:
+   * Displays water polo standings showing placement, record, club represented, and division.
+   * Replaces static subtext placeholders with a dynamic roster player count (e.g., `7 players registered`) computed efficiently using a subselect on the `water_polo_rosters` table.
+5. **Edit Result Modal**: The shared [EditResultModal](file:///Users/mwillmott/Antigravity/igla-records/src/app/components/EditResultModal.tsx) component edits a single record in place:
    - **Swimming results** — event, course, age/gender category, time, place, record flags (`is_all_time_record`, `record_still_held`), athlete linkage, and the "broken by" athlete reference.
    - **Water polo teams** — team name, club, division, final placement, and the win/loss/goals/points statistics.
-3. **Water Polo Roster Editing**: Rosters for a water polo team can be edited inline. Adding a player supports either selecting an existing athlete or **creating a brand-new athlete profile on the fly** (auto-generating a slug ID, defaulting pronouns/hometown), all within a single atomic transaction. Duplicate-roster and missing-team conditions are rejected with descriptive errors.
-4. **Audit Trail**: Every edit stamps `updated_by` (the acting admin's email) and `updated_at`, which surface in the UI as a "who/when" indicator (see §6).
+6. **Water Polo Roster Editing**: Rosters for a water polo team can be edited inline. Adding a player supports either selecting an existing athlete or **creating a brand-new athlete profile on the fly** (auto-generating a slug ID, defaulting pronouns/hometown), all within a single atomic transaction. Duplicate-roster and missing-team conditions are rejected with descriptive errors.
+7. **Audit Trail**: Every edit stamps `updated_by` (the acting admin's email) and `updated_at`, which surface in the UI as a "who/when" indicator (see §6).
 
-### Backend APIs
+### Backend & Page Routes
+- **Page `/admin/results/swimming`**: Renders swimming results list using dynamic server query bindings.
+- **Page `/admin/results/waterpolo`**: Renders water polo standings list and selects roster size via a subquery.
 - **POST `/api/admin/records/update`**: Updates a single `swimming` or `wp` record by `id`, writing audit columns. Returns 404 if the target row does not exist.
 - **POST `/api/admin/records/delete`**: Deletes a single swimming result or water polo team.
 - **POST `/api/admin/roster/add`**: Adds an athlete (existing or newly created) to a water polo roster with cap number and captain flag, inside a transaction.

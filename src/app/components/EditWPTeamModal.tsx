@@ -4,27 +4,25 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Trophy, X, ShieldAlert, Save, Clock } from 'lucide-react';
 import { UserSession } from '@/lib/auth';
-import { SWIMMING_AGE_CATEGORIES } from '@/lib/config';
+import { WATER_POLO_DIVISIONS } from '@/lib/config';
 
-interface EditResultModalProps {
+interface EditWPTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
   recordData: any;
-  athletes: { id: string; name: string }[];
-  clubs?: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
   session: UserSession | null;
   onSaveSuccess: () => void;
 }
 
-export default function EditResultModal({
+export default function EditWPTeamModal({
   isOpen,
   onClose,
   recordData,
-  athletes,
-  clubs = [],
+  clubs,
   session,
   onSaveSuccess,
-}: EditResultModalProps) {
+}: EditWPTeamModalProps) {
   const [editFields, setEditFields] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -43,17 +41,15 @@ export default function EditResultModal({
       setConfirmDelete(false);
       setDeleting(false);
       setEditFields({
-        event: recordData.event || '',
-        course: recordData.course || 'LCM',
-        age_category: recordData.age || recordData.age_category || recordData.category || '',
-        gender_category: recordData.gender || recordData.gender_category || 'Men',
-        time: recordData.time || '',
-        place: recordData.place || 1,
-        is_all_time_record: recordData.is_all_time_record === 1 || recordData.is_all_time_record === true || recordData.record === 1 || false,
-        record_still_held: recordData.held === 1 || recordData.record_still_held === 1 || !recordData.brokenBy || false,
-        athlete_id: recordData.athleteId || recordData.athlete_id || '',
+        team_name: recordData.teamName || recordData.team_name || '',
         club_id: recordData.clubId || recordData.club_id || '',
-        broken_by_athlete_id: recordData.brokenById || recordData.broken_by_athlete_id || '',
+        division: recordData.division || 'Competitive',
+        final_placement: recordData.placement || recordData.final_placement || 1,
+        wins: recordData.wins !== null && recordData.wins !== undefined ? recordData.wins : '',
+        losses: recordData.losses !== null && recordData.losses !== undefined ? recordData.losses : '',
+        goals_for: recordData.goalsFor || recordData.goals_for || '',
+        goals_against: recordData.goalsAgainst || recordData.goals_against || '',
+        points: recordData.points !== null && recordData.points !== undefined ? recordData.points : '',
       });
     }
   }, [isOpen, recordData]);
@@ -72,14 +68,14 @@ export default function EditResultModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'swimming',
+          type: 'wp',
           id: recordData.id,
         }),
       });
 
       const resData = await response.json();
       if (!response.ok) {
-        setEditError(resData.error || 'Failed to delete record.');
+        setEditError(resData.error || 'Failed to delete team.');
         setDeleting(false);
         setConfirmDelete(false);
         return;
@@ -116,7 +112,7 @@ export default function EditResultModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'swimming',
+          type: 'wp',
           id: recordData.id,
           tournamentId: recordData.tournamentId || recordData.tournament_id,
           fields: editFields,
@@ -125,7 +121,7 @@ export default function EditResultModal({
 
       const resData = await response.json();
       if (!response.ok) {
-        setEditError(resData.error || (isNew ? 'Failed to create record.' : 'Failed to update record.'));
+        setEditError(resData.error || (isNew ? 'Failed to create team.' : 'Failed to update team.'));
         setSaving(false);
         return;
       }
@@ -166,7 +162,7 @@ export default function EditResultModal({
           <div className="flex items-center gap-2">
             <Trophy size={18} className="text-coral" />
             <h3 className="font-display text-xl font-bold text-ink">
-              {recordData.isNew ? 'Create Swimming Result' : 'Edit Swimming Record'}
+              {recordData.isNew ? 'Create Water Polo Team' : 'Edit Water Polo Team'}
             </h3>
           </div>
           <button 
@@ -187,100 +183,16 @@ export default function EditResultModal({
             </div>
           )}
 
-          {/* Swimming Form Fields */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Event Name</label>
-              <input 
-                type="text" 
-                value={editFields.event || ''} 
-                onChange={e => updateField('event', e.target.value)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
-                required
-              />
-            </div>
-            
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Course</label>
-              <select 
-                value={editFields.course || 'LCM'} 
-                onChange={e => updateField('course', e.target.value)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
-              >
-                <option value="LCM">Long Course (LCM)</option>
-                <option value="SCM">Short Course (SCM)</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Age Category</label>
-              <select 
-                value={editFields.age_category || ''} 
-                onChange={e => updateField('age_category', e.target.value)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
-                required
-              >
-                <option value="" disabled>Select Age Category</option>
-                {SWIMMING_AGE_CATEGORIES.map(age => (
-                  <option key={age} value={age}>{age}</option>
-                ))}
-                {editFields.age_category && !(SWIMMING_AGE_CATEGORIES as readonly string[]).includes(editFields.age_category) && (
-                  <option value={editFields.age_category}>{editFields.age_category}</option>
-                )}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Gender Category</label>
-              <select 
-                value={editFields.gender_category || 'Men'} 
-                onChange={e => updateField('gender_category', e.target.value)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
-              >
-                <option value="Men">Men</option>
-                <option value="Women">Women</option>
-                <option value="Mixed">Mixed</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Record Time</label>
-              <input 
-                type="text" 
-                value={editFields.time || ''} 
-                onChange={e => updateField('time', e.target.value)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-mono font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
-                placeholder="e.g. 2:04.53"
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Placement Place</label>
-              <input 
-                type="number" 
-                min="1"
-                value={editFields.place || 1} 
-                onChange={e => updateField('place', parseInt(e.target.value) || 1)}
-                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
-                required
-              />
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Team Name</label>
+            <input 
+              type="text" 
+              value={editFields.team_name || ''} 
+              onChange={e => updateField('team_name', e.target.value)}
+              className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+              required
+            />
           </div>
-
-          <SearchableSelect
-            label="Athlete"
-            placeholder="Search or select athlete..."
-            value={editFields.athlete_id || ''}
-            onChange={id => {
-              updateField('athlete_id', id);
-              const selectedAthleteObj = athletes.find(a => a.id === id) as any;
-              if (selectedAthleteObj?.current_club_id && !editFields.club_id) {
-                updateField('club_id', selectedAthleteObj.current_club_id);
-              }
-            }}
-            options={athletes}
-          />
 
           <SearchableSelect
             label="Club Affiliation"
@@ -290,51 +202,91 @@ export default function EditResultModal({
             options={clubs}
           />
 
-          {/* Toggle for all time record */}
-          <div className="flex items-center justify-between gap-4 p-3 bg-bg-2 border-2 border-ink/10 rounded-xl select-none">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-ink">All-Time Record Status</span>
-              <span className="text-[10px] text-ink-3">Is this swim time an official all-time IGLA+ record?</span>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Division dropdown */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Division</label>
+              <select 
+                value={editFields.division || ''} 
+                onChange={e => updateField('division', e.target.value)}
+                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-aqua"
+                required
+              >
+                {WATER_POLO_DIVISIONS.map(div => (
+                  <option key={div} value={div}>{div}</option>
+                ))}
+              </select>
             </div>
-            <input 
-              type="checkbox" 
-              checked={editFields.is_all_time_record || false}
-              onChange={e => {
-                updateField('is_all_time_record', e.target.checked);
-                if (!e.target.checked) {
-                  updateField('record_still_held', false);
-                }
-              }}
-              className="w-5 h-5 accent-coral cursor-pointer"
-            />
-          </div>
 
-          {/* Toggle switches for record held */}
-          {editFields.is_all_time_record && (
-            <div className="flex items-center justify-between gap-4 p-3 bg-bg-2 border-2 border-ink/10 rounded-xl select-none">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-ink">Record Currently Standing</span>
-                <span className="text-[10px] text-ink-3">Is this result currently the reigning all-time record?</span>
-              </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Final Placement (Rank)</label>
               <input 
-                type="checkbox" 
-                checked={editFields.record_still_held || false}
-                onChange={e => updateField('record_still_held', e.target.checked)}
-                className="w-5 h-5 accent-coral cursor-pointer"
+                type="number" 
+                min="1"
+                value={editFields.final_placement || 1} 
+                onChange={e => updateField('final_placement', parseInt(e.target.value) || 1)}
+                className="bg-white border-2 border-ink rounded-xl px-3 h-10 font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                required
               />
             </div>
-          )}
+          </div>
 
-          {/* If not still held, select who broke it */}
-          {editFields.is_all_time_record && !editFields.record_still_held && (
-            <SearchableSelect
-              label="Record Broken By"
-              placeholder="Search or select athlete..."
-              value={editFields.broken_by_athlete_id || ''}
-              onChange={id => updateField('broken_by_athlete_id', id)}
-              options={athletes}
-            />
-          )}
+          {/* Optional Match Statistics */}
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-ink-3">Match Standings Statistics (Optional)</label>
+            <div className="grid grid-cols-5 gap-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Wins</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editFields.wins ?? ''} 
+                  onChange={e => updateField('wins', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                  className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Losses</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editFields.losses ?? ''} 
+                  onChange={e => updateField('losses', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                  className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Goals For</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editFields.goals_for ?? ''} 
+                  onChange={e => updateField('goals_for', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                  className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Goals Ag.</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editFields.goals_against ?? ''} 
+                  onChange={e => updateField('goals_against', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                  className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-ink-3 text-center">Points</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editFields.points ?? ''} 
+                  onChange={e => updateField('points', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                  className="bg-white border-2 border-ink rounded-xl px-2 h-10 font-mono text-center font-semibold text-xs text-ink focus:outline-none focus:ring-2 focus:ring-aqua"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* BEAUTIFUL AUDIT TRAIL LOG */}
           {!recordData.isNew && (
@@ -428,7 +380,7 @@ export default function EditResultModal({
                     className="pill active bg-ink text-white font-bold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                   >
                     <Save size={13} />
-                    <span>{saving ? 'Saving...' : (recordData.isNew ? 'Create Result' : 'Save Changes')}</span>
+                    <span>{saving ? 'Saving...' : (recordData.isNew ? 'Create Team' : 'Save Changes')}</span>
                   </button>
                 </div>
               </div>
@@ -517,7 +469,7 @@ function SearchableSelect({ label, placeholder, value, onChange, options }: Sear
       {isOpen && (
         <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border-2 border-ink rounded-xl shadow-[3px_4px_0_#0d3a52] max-h-48 overflow-y-auto z-50 flex flex-col">
           {filteredOptions.length === 0 ? (
-            <div className="p-3 text-xs text-ink-3 text-center">No athletes found</div>
+            <div className="p-3 text-xs text-ink-3 text-center">No clubs found</div>
           ) : (
             filteredOptions.map(o => (
               <button

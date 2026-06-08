@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Trophy, UserPlus, Hash, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Trophy, UserPlus, Hash, Settings, Waves, Upload } from 'lucide-react';
 
 interface SidebarNavProps {
   counts: {
@@ -54,13 +54,37 @@ export default function AdminSidebarNav({ counts }: SidebarNavProps) {
         <span className="ic"><UserPlus size={17} /></span> Athletes
         <span className="ct">{counts.athletes}</span>
       </Link>
+      
       <Link 
-        href="/admin/results" 
+        href="/admin/results/swimming" 
         className={`admin-navitem ${isRouteActive('/admin/results') ? 'active' : ''}`}
       >
         <span className="ic"><Hash size={17} /></span> Results
         <span className="ct">{counts.results}</span>
       </Link>
+
+      {isRouteActive('/admin/results') && (
+        <div className="admin-subnav">
+          <Link 
+            href="/admin/results/swimming" 
+            className={`admin-subnavitem ${pathname === '/admin/results/swimming' ? 'active' : ''}`}
+          >
+            <span className="ic"><Waves size={13} /></span> Swimming
+          </Link>
+          <Link 
+            href="/admin/results/waterpolo" 
+            className={`admin-subnavitem ${pathname === '/admin/results/waterpolo' ? 'active' : ''}`}
+          >
+            <span className="ic"><Trophy size={13} /></span> Water Polo
+          </Link>
+          <Link 
+            href="/admin/results/import" 
+            className={`admin-subnavitem ${pathname === '/admin/results/import' ? 'active' : ''}`}
+          >
+            <span className="ic"><Upload size={13} /></span> Import Results
+          </Link>
+        </div>
+      )}
 
       <div className="admin-navlabel">System</div>
       <Link 
@@ -83,6 +107,12 @@ export function AdminBreadcrumb() {
     label = 'Tournaments';
   } else if (pathname.includes('/athletes')) {
     label = 'Athletes';
+  } else if (pathname.includes('/results/swimming')) {
+    label = 'Results › Swimming';
+  } else if (pathname.includes('/results/waterpolo')) {
+    label = 'Results › Water Polo';
+  } else if (pathname.includes('/results/import')) {
+    label = 'Results › Import';
   } else if (pathname.includes('/results')) {
     label = 'Results';
   } else if (pathname.includes('/settings')) {

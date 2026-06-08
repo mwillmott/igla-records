@@ -1,9 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Upload, FileText, CheckCircle2, ShieldAlert, Award, HelpCircle, Merge, UserPlus, AlertCircle, RefreshCw, MapPin, ChevronDown, Trophy } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { 
+  Upload, FileText, CheckCircle2, ShieldAlert, Award, HelpCircle, 
+  Merge, UserPlus, AlertCircle, RefreshCw, MapPin, ChevronDown, 
+  Trophy, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, 
+  X, Sparkles, Target, Waves, ArrowLeft, Trash, Users
+} from 'lucide-react';
+import EditResultModal from '../../components/EditResultModal';
+import EditWPTeamModal from '../../components/EditWPTeamModal';
 
 interface Tournament {
   id: string;
@@ -11,13 +18,16 @@ interface Tournament {
   year: number;
 }
 
-interface DBAthleteCandidate {
+interface Athlete {
   id: string;
   name: string;
-  club_name: string;
-  hometown: string;
-  pronouns: string;
-  similarity: number;
+  current_club_id: string | null;
+}
+
+interface Club {
+  id: string;
+  name: string;
+  flag: string;
 }
 
 interface FuzzyConflict {
@@ -33,7 +43,7 @@ interface FuzzyConflict {
     place: string;
     record_broken: string;
   };
-  candidates: DBAthleteCandidate[];
+  candidates: any[];
 }
 
 interface Resolution {
@@ -45,12 +55,110 @@ interface Resolution {
 }
 
 interface ResultsAdminClientProps {
+  mode: 'swimming' | 'wp' | 'import';
   tournaments: Tournament[];
+  athletes?: Athlete[];
+  clubs?: Club[];
+  swimmingResults?: any[];
+  waterPoloResults?: any[];
+  session: any;
+  totalCount?: number;
+  currentPage?: number;
+  itemsPerPage?: number;
+  stats?: any;
+  ageOptions?: string[];
+  divisionOptions?: string[];
 }
 
-export default function ResultsAdminClient({ tournaments }: ResultsAdminClientProps) {
+export default function ResultsAdminClient({ 
+  mode,
+  tournaments, 
+  athletes = [], 
+  clubs = [], 
+  swimmingResults: initialSwimResults = [], 
+  waterPoloResults: initialWpResults = [], 
+  session,
+  totalCount = 0,
+  currentPage = 1,
+  itemsPerPage = 15,
+  stats = {},
+  ageOptions = [],
+  divisionOptions = []
+}: ResultsAdminClientProps) {
   const router = useRouter();
-  const [selectedTournament, setSelectedTournament] = useState(tournaments[0]?.id || 'valencia-2026');
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  
+  // Data State sync
+  const [swimResults, setSwimResults] = useState(initialSwimResults);
+  const [wpResults, setWpResults] = useState(initialWpResults);
+
+  useEffect(() => {
+    setSwimResults(initialSwimResults);
+    setWpResults(initialWpResults);
+  }, [initialSwimResults, initialWpResults]);
+
+  // Read active filters and sorting from URL params
+  const selectedTournament = searchParams.get('tournamentId') || 'All';
+  const swimCourse = searchParams.get('course') || 'All';
+  const swimAge = searchParams.get('age') || 'All';
+  const swimGender = searchParams.get('gender') || 'All';
+  const swimRecordOnly = searchParams.get('record') === 'Yes' || searchParams.get('record') === 'true';
+  const wpDivision = searchParams.get('division') || 'All';
+  
+  const sortField = (searchParams.get('sort') || (mode === 'swimming' ? 'event' : 'place')) as any;
+  const sortDirection = (searchParams.get('dir') || 'asc') as 'asc' | 'desc';
+
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // Local state for search bar query to keep typing fluid
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+
+  // Helper to update URL query params in a single transition
+  const updateUrlParams = (newParams: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value === null || value === '' || value === 'All') {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+
+    if (!newParams.hasOwnProperty('page')) {
+      params.delete('page');
+    }
+
+    startTransition(() => {
+      router.push(`/admin/results/${mode}?${params.toString()}`, { scroll: false });
+    });
+  };
+
+  // Debounce search updates
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== (searchParams.get('q') || '')) {
+        updateUrlParams({ q: searchQuery || null });
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Sync search input if URL changes externally (e.g. browser back button)
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  // Modals edit state
+  const [editingSwimRecord, setEditingSwimRecord] = useState<any | null>(null);
+  const [editingWpRecord, setEditingWpRecord] = useState<any | null>(null);
+
+  // CSV Ingestion file upload state
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -75,6 +183,7 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
     result: { insertCount: number; newAthletesCount: number; newRecordsCount: number };
   } | null>(null);
 
+  // Handle CSV Ingestion File Upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -97,7 +206,8 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('tournamentId', selectedTournament);
+    const targetTournamentId = selectedTournament === 'All' ? (tournaments[0]?.id || '') : selectedTournament;
+    formData.append('tournamentId', targetTournamentId);
 
     try {
       const response = await fetch('/api/admin/upload', {
@@ -155,6 +265,7 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
 
       setCommitResult(data);
       setUploadResult(null); // Clear staged state
+      showToast('Import completed successfully!');
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -164,7 +275,7 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
     }
   };
 
-  const handleResolveMerge = (conflict: FuzzyConflict, candidate: DBAthleteCandidate) => {
+  const handleResolveMerge = (conflict: FuzzyConflict, candidate: any) => {
     setResolutions(prev => {
       const next = new Map(prev);
       next.set(conflict.rowId, {
@@ -214,27 +325,157 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
   const activeConflict = uploadResult?.fuzzyConflicts[conflictIndex];
   const allResolved = uploadResult ? resolutions.size === uploadResult.fuzzyConflicts.length : false;
 
+  // Drive pagination directly from server-paginated props
+  const paginatedSwim = swimResults;
+  const paginatedWp = wpResults;
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
+
+  const toggleSort = (field: typeof sortField) => {
+    const nextDir = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+    updateUrlParams({ sort: field, dir: nextDir });
+  };
+
+  const handleOpenAddModal = () => {
+    const defaultTournamentId = selectedTournament === 'All' ? (tournaments[0]?.id || '') : selectedTournament;
+    if (mode === 'swimming') {
+      setEditingSwimRecord({
+        isNew: true,
+        tournamentId: defaultTournamentId,
+      });
+    } else if (mode === 'wp') {
+      setEditingWpRecord({
+        isNew: true,
+        tournamentId: defaultTournamentId,
+      });
+    }
+  };
+
+  const handleSaveSuccess = () => {
+    setEditingSwimRecord(null);
+    setEditingWpRecord(null);
+    showToast('Record saved successfully!');
+    router.refresh();
+  };
+
+  // Header Title metadata
+  const currentTournamentName = tournaments.find(t => t.id === selectedTournament)?.name || 'Championship';
+
   return (
-    <div className="view-enter" data-screen-label="Admin Ingestion">
+    <div className="view-enter" data-screen-label={mode === 'swimming' ? 'Admin Swimming' : mode === 'wp' ? 'Admin Water Polo' : 'Admin Import'}>
+      {/* Toast Alert */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl border-2 shadow-[4px_5px_0_#0d3a52] flex items-center gap-3 animate-slideIn ${
+          toast.type === 'success' 
+            ? 'bg-emerald-50 border-emerald-500 text-emerald-800' 
+            : 'bg-coral-pale border-coral text-coral-deep'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <span className="text-xs font-bold">{toast.message}</span>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="admin-pagehead animate-fadeIn">
+      <div className="admin-pagehead animate-fadeIn animate-duration-200">
         <div>
-          <h1>Manage <em>Results</em></h1>
-          <div className="sub">Ingest, sync, or manually edit championship event results.</div>
+          <h1>
+            Manage {mode === 'swimming' ? <em>Swimming</em> : mode === 'wp' ? <em>Water Polo</em> : <em>Ingestion</em>}
+          </h1>
+          <div className="sub">
+            {mode === 'swimming' && 'Edit, remove, or register individual swimming results and all-time records.'}
+            {mode === 'wp' && 'Manage water polo division team standings and final placements.'}
+            {mode === 'import' && 'Upload raw championship spreadsheets and resolve naming ambiguities.'}
+          </div>
+        </div>
+        <div className="admin-actions flex gap-2">
+          {mode !== 'import' && (
+            <>
+              <Link 
+                href="/admin/results/import"
+                className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer flex items-center gap-2"
+              >
+                <Upload size={14} />
+                <span>Import CSV</span>
+              </Link>
+              <button 
+                onClick={handleOpenAddModal}
+                className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2.5 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Add {mode === 'swimming' ? 'Swimmer Result' : 'Polo Team Result'}</span>
+              </button>
+            </>
+          )}
+          {mode === 'import' && !uploadResult && !commitResult && (
+            <Link 
+              href="/admin/results/swimming"
+              className="pill bg-white border-2 border-ink text-ink font-semibold text-xs py-2.5 px-5 rounded-full hover:bg-aqua-pale cursor-pointer flex items-center gap-2"
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Records</span>
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* Main Upload Card */}
-      {!uploadResult && !commitResult && (
+      {/* KPI Stats Strip */}
+      {mode === 'swimming' && (
+        <div className="stat-strip mb-6 animate-fadeIn">
+          <div className="stat-tile">
+            <div className="stat-tile-val font-mono tabular-nums">
+              {stats.resultsCount || 0}
+            </div>
+            <div className="stat-tile-key text-ink-3">Results Logged</div>
+          </div>
+          <div className="stat-tile">
+            <div className="stat-tile-val font-mono tabular-nums">
+              {stats.competitorsCount || 0}
+            </div>
+            <div className="stat-tile-key text-ink-3">Unique Competitors</div>
+          </div>
+          <div className="stat-tile coral">
+            <div className="stat-tile-val font-mono text-white tabular-nums">
+              {stats.recordsCount || 0}
+            </div>
+            <div className="stat-tile-key text-white/90">All-Time Records set</div>
+          </div>
+        </div>
+      )}
+
+      {mode === 'wp' && (
+        <div className="stat-strip mb-6 animate-fadeIn">
+          <div className="stat-tile">
+            <div className="stat-tile-val font-mono tabular-nums">
+              {stats.teamsCount || 0}
+            </div>
+            <div className="stat-tile-key text-ink-3">Teams Registered</div>
+          </div>
+          <div className="stat-tile">
+            <div className="stat-tile-val font-mono tabular-nums">
+              {stats.divisionsCount || 0}
+            </div>
+            <div className="stat-tile-key text-ink-3">Divisions</div>
+          </div>
+          <div className="stat-tile coral">
+            <div className="stat-tile-val font-mono text-white tabular-nums">
+              {stats.championsCount || 0}
+            </div>
+            <div className="stat-tile-key text-white/90">Champions Crowned</div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV IMPORT SCREEN */}
+      {mode === 'import' && !uploadResult && !commitResult && (
         <div className="panel max-w-2xl mx-auto mt-6 animate-fadeIn">
-          <div className="panel-head">
-            <h3>Import Swimming Results</h3>
-            <span className="chip upcoming text-[9px]">CSV Ingestion</span>
+          <div className="panel-head bg-aqua-sky/20">
+            <h3>Import Swimming Results CSV</h3>
+            <span className="chip upcoming text-[9px]">Ingest Spreadsheet</span>
           </div>
 
           <div className="panel-body p-6">
             <p className="text-xs text-ink-3 mb-6 leading-relaxed">
-              Upload a raw CSV spreadsheet of results from a swimming tournament. 
+              Upload a raw CSV spreadsheet of results for <strong>{currentTournamentName}</strong>. 
               The system will parse the records, auto-link matching profiles, and prompt 
               you to resolve conflicts.
               <br />
@@ -256,8 +497,8 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
                 <label className="text-[10px] font-bold tracking-wider text-ink-3 uppercase">Championship Event</label>
                 <div className="sel-wrap">
                   <select
-                    value={selectedTournament}
-                    onChange={e => setSelectedTournament(e.target.value)}
+                    value={selectedTournament === 'All' ? tournaments[0]?.id || '' : selectedTournament}
+                    onChange={e => updateUrlParams({ tournamentId: e.target.value })}
                     className="sel"
                   >
                     {tournaments.map(t => (
@@ -328,7 +569,7 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
       )}
 
       {/* COMMIT SUCCESS SCREEN */}
-      {commitResult && (
+      {mode === 'import' && commitResult && (
         <section className="tile tile-lg p-10 max-w-2xl mx-auto mt-6 bg-white/90 border-2 border-ink shadow-[5px_6px_0_#0d3a52] text-center select-none animate-fadeIn">
           <div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-500 text-emerald-600 flex items-center justify-center mb-6">
             <CheckCircle2 size={32} />
@@ -367,17 +608,21 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
               Upload another file
             </button>
             <Link
-              href="/results"
-              className="pill active bg-ink text-white font-semibold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 cursor-pointer"
+              href="/admin/results/swimming"
+              onClick={() => {
+                setCommitResult(null);
+                setFile(null);
+              }}
+              className="pill active bg-ink text-white font-semibold text-xs py-2.5 px-6 rounded-full border-2 border-ink hover:bg-ink-2 cursor-pointer inline-flex items-center justify-center"
             >
-              View updated records
+              Back to Dashboard
             </Link>
           </div>
         </section>
       )}
 
       {/* SPLIT-SCREEN MANUAL RESOLVER PANEL */}
-      {uploadResult && uploadResult.fuzzyConflicts.length > 0 && activeConflict && (
+      {mode === 'import' && uploadResult && uploadResult.fuzzyConflicts.length > 0 && activeConflict && (
         <div className="flex flex-col gap-6 mt-6 animate-fadeIn">
           {/* Progress Header */}
           <div className="tile p-4 bg-coral-pale/40 border-2 border-coral rounded-xl flex items-center justify-between gap-4 select-none shadow-sm">
@@ -545,6 +790,513 @@ export default function ResultsAdminClient({ tournaments }: ResultsAdminClientPr
           </div>
         </div>
       )}
+
+      {/* PRIMARY CRUD WORKSPACE VIEW */}
+      {mode !== 'import' && (
+        <div className="animate-fadeIn animate-duration-250">
+          {/* Filtering Toolbar */}
+          <div className="flex flex-col gap-4 mb-5 select-none bg-white p-4 rounded-2xl border-2 border-ink shadow-[3px_4px_0_#0d3a52]">
+            {/* Top Row: Championship & Search */}
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 justify-between w-full">
+              {/* Tournament Selector */}
+              <div className="flex flex-col gap-1 w-full sm:w-auto">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">Championship Event</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-aqua-sky/20 border-2 border-ink text-ink select-none shrink-0">
+                    <Trophy size={18} className="text-coral" />
+                  </div>
+                  <div className="sel-wrap min-w-[240px] sm:min-w-[280px] w-full">
+                    <select
+                      value={selectedTournament}
+                      onChange={e => updateUrlParams({ tournamentId: e.target.value })}
+                      className="sel h-10 text-xs pl-3 pr-8 bg-white font-bold w-full cursor-pointer focus:outline-none"
+                    >
+                      <option value="All">All Championships</option>
+                      {tournaments.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.year})</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} className="chev" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Search box */}
+              <div className="flex flex-col sm:items-end gap-1 w-full sm:w-auto">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3 sm:mr-1">Search Results</span>
+                <div className="search w-full sm:w-[320px] h-10 bg-white !flex-none" style={{ flex: 'none' }}>
+                  <Search size={14} className="text-ink-2" />
+                  <input
+                    placeholder={mode === 'swimming' ? "Search event, swimmer, club..." : "Search team, club, division..."}
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full text-xs font-semibold placeholder:text-ink-3 placeholder:font-normal"
+                  />
+                  {searchQuery && (
+                    <button className="search-clear" onClick={() => setSearchQuery('')}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Additional Filters */}
+            <div className="flex flex-wrap items-end gap-4 pt-4 border-t border-dashed border-ink/20 w-full">
+              {/* Swimming specific filters */}
+              {mode === 'swimming' && (
+                <>
+                  {/* Course */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">Course</span>
+                    <div className="sel-wrap min-w-[110px]">
+                      <select
+                        value={swimCourse}
+                        onChange={e => updateUrlParams({ course: e.target.value })}
+                        className="sel h-10 text-xs pl-3 pr-8 bg-white font-semibold w-full cursor-pointer focus:outline-none"
+                      >
+                        <option value="All">All Courses</option>
+                        <option value="LCM">LCM (50m)</option>
+                        <option value="SCM">SCM (25m)</option>
+                      </select>
+                      <ChevronDown size={12} className="chev" />
+                    </div>
+                  </div>
+
+                  {/* Age */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">Age Group</span>
+                    <div className="sel-wrap min-w-[110px]">
+                      <select
+                        value={swimAge}
+                        onChange={e => updateUrlParams({ age: e.target.value })}
+                        className="sel h-10 text-xs pl-3 pr-8 bg-white font-semibold w-full cursor-pointer focus:outline-none"
+                      >
+                        <option value="All">All Ages</option>
+                        {ageOptions.map(age => (
+                          <option key={age} value={age}>{age}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={12} className="chev" />
+                    </div>
+                  </div>
+
+                  {/* Gender */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">Gender Category</span>
+                    <div className="sel-wrap min-w-[130px]">
+                      <select
+                        value={swimGender}
+                        onChange={e => updateUrlParams({ gender: e.target.value })}
+                        className="sel h-10 text-xs pl-3 pr-8 bg-white font-semibold w-full cursor-pointer focus:outline-none"
+                      >
+                        <option value="All">All Genders</option>
+                        <option value="Men">Men</option>
+                        <option value="Women">Women</option>
+                        <option value="Mixed">Mixed</option>
+                      </select>
+                      <ChevronDown size={12} className="chev" />
+                    </div>
+                  </div>
+
+                  {/* Record Toggle */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">Record Status</span>
+                    <button
+                      onClick={() => updateUrlParams({ record: swimRecordOnly ? 'No' : 'Yes' })}
+                      className={`h-10 px-4 flex items-center gap-2 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        swimRecordOnly 
+                          ? 'bg-coral border-ink text-white shadow-[2px_2px_0_rgba(0,0,0,0.15)] hover:bg-coral-deep' 
+                          : 'bg-white border-ink text-ink hover:bg-aqua-pale'
+                      }`}
+                    >
+                      <Sparkles size={12} className={swimRecordOnly ? 'text-white' : 'text-coral'} />
+                      <span>Records Only</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Water Polo specific filters */}
+              {mode === 'wp' && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">Division</span>
+                  <div className="sel-wrap min-w-[180px]">
+                    <select
+                      value={wpDivision}
+                      onChange={e => updateUrlParams({ division: e.target.value })}
+                      className="sel h-10 text-xs pl-3 pr-8 bg-white font-semibold w-full cursor-pointer focus:outline-none"
+                    >
+                      <option value="All">All Divisions</option>
+                      {divisionOptions.map(div => (
+                        <option key={div} value={div}>{div}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} className="chev" />
+                  </div>
+                </div>
+              )}
+
+              {/* Clear Filters Button */}
+              {((mode === 'swimming' && (swimCourse !== 'All' || swimAge !== 'All' || swimGender !== 'All' || swimRecordOnly)) || 
+                (mode === 'wp' && wpDivision !== 'All')) && (
+                <button
+                  onClick={() => {
+                    if (mode === 'swimming') {
+                      updateUrlParams({ course: 'All', age: 'All', gender: 'All', record: 'No' });
+                    } else {
+                      updateUrlParams({ division: 'All' });
+                    }
+                  }}
+                  className="h-10 px-4 ml-auto flex items-center gap-1.5 border-2 border-dashed border-ink/30 rounded-xl text-xs font-bold text-ink-2 hover:border-ink hover:text-ink hover:bg-bg-2 transition-all cursor-pointer"
+                >
+                  <X size={13} />
+                  <span>Clear Filters</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Results Table Section */}
+          <div className="dt-wrap relative">
+            {isPending && (
+              <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center z-10 animate-fadeIn animate-duration-150">
+                <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-ink rounded-full shadow-[2px_3px_0_#000]">
+                  <RefreshCw className="animate-spin text-coral" size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink">Loading results...</span>
+                </div>
+              </div>
+            )}
+            <table className="dt">
+              {mode === 'swimming' ? (
+                <>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '8%' }}>
+                        <button 
+                          onClick={() => toggleSort('place')}
+                          className={`sortable ${sortField === 'place' ? 'on' : ''}`}
+                        >
+                          Place
+                          {sortField === 'place' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th style={{ width: '22%' }}>
+                        <button 
+                          onClick={() => toggleSort('athlete')}
+                          className={`sortable ${sortField === 'athlete' ? 'on' : ''}`}
+                        >
+                          Athlete Swimmer
+                          {sortField === 'athlete' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th style={{ width: '25%' }}>
+                        <button 
+                          onClick={() => toggleSort('event')}
+                          className={`sortable ${sortField === 'event' ? 'on' : ''}`}
+                        >
+                          Swim Event
+                          {sortField === 'event' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th style={{ width: '15%' }}>Categories</th>
+                      <th style={{ width: '10%' }}>Swim Time</th>
+                      <th style={{ width: '12%' }}>Record Status</th>
+                      <th className="act" style={{ width: '8%' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedSwim.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-ink-3 italic">
+                          No swimming results match your filters for this tournament.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedSwim.map((r) => {
+                        return (
+                          <tr key={r.id}>
+                            <td className="num select-none">
+                              <span className={`place-badge inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
+                                r.place === 1 ? 'place-1' : r.place === 2 ? 'place-2' : r.place === 3 ? 'place-3' : 'place-other'
+                              }`}>
+                                {r.place}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="font-semibold text-ink">
+                                {r.athleteId ? (
+                                  <Link href={`/athletes/${r.athleteId}`} target="_blank" className="hover:underline hover:text-coral transition-colors">
+                                    {r.athlete}
+                                  </Link>
+                                ) : (
+                                  <span>{r.athlete || 'Independent'}</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-ink-3 flex items-center gap-1.5 mt-0.5 select-none">
+                                <span>{r.club}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="font-bold text-ink-2">{r.event}</div>
+                              <span className="text-[9px] uppercase font-mono tracking-wider mt-1 px-1 bg-bg-2 border border-ink/10 rounded select-none">{r.course}</span>
+                            </td>
+                            <td>
+                              <div className="text-xs text-ink-2 font-semibold">Age {r.age}</div>
+                              <div className="text-[10px] text-ink-3 mt-0.5">{r.gender}</div>
+                            </td>
+                            <td className="font-mono text-xs font-bold text-ink tabular-nums">
+                              {r.time}
+                            </td>
+                            <td>
+                              {r.is_all_time_record === 1 ? (
+                                <span className={`inline-flex items-center gap-1 text-[9px] py-0.5 px-2 rounded-full font-bold border uppercase tracking-wider select-none ${
+                                  r.held === 1 
+                                    ? 'bg-coral text-white border-ink' 
+                                    : 'bg-bg-2 border-ink/20 text-ink-3'
+                                }`}>
+                                  <Sparkles size={9} />
+                                  <span>{r.held === 1 ? 'Reigning' : 'Broken'}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-ink-3 italic select-none">Regular</span>
+                              )}
+                            </td>
+                            <td className="act">
+                              <div className="row-actions">
+                                <button
+                                  onClick={() => setEditingSwimRecord(r)}
+                                  className="row-btn"
+                                  title="Edit Swim Result"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (confirm(`Are you sure you want to delete this swimming result?`)) {
+                                      try {
+                                        const res = await fetch('/api/admin/records/delete', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ type: 'swimming', id: r.id })
+                                        });
+                                        if (res.ok) {
+                                          showToast('Result deleted.');
+                                          router.refresh();
+                                        } else {
+                                          showToast('Failed to delete.', 'error');
+                                        }
+                                      } catch (err) {
+                                        showToast('Error deleting.', 'error');
+                                      }
+                                    }
+                                  }}
+                                  className="row-btn danger"
+                                  title="Delete Swim Result"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </>
+              ) : (
+                <>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '8%' }}>Rank</th>
+                      <th style={{ width: '30%' }}>
+                        <button 
+                          onClick={() => toggleSort('teamName')}
+                          className={`sortable ${sortField === 'teamName' ? 'on' : ''}`}
+                        >
+                          Water Polo Team
+                          {sortField === 'teamName' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th style={{ width: '22%' }}>Club Represented</th>
+                      <th style={{ width: '15%' }}>Division</th>
+                      <th className="num" style={{ width: '15%' }}>
+                        <button 
+                          onClick={() => toggleSort('points')}
+                          className={`sortable ${sortField === 'points' ? 'on' : ''}`}
+                        >
+                          Record (Wins/Losses)
+                          {sortField === 'points' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th className="act" style={{ width: '10%' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedWp.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-ink-3 italic">
+                          No water polo standings match your filters for this tournament.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedWp.map((w) => {
+                        return (
+                          <tr key={w.id}>
+                            <td className="num select-none">
+                              <span className={`place-badge inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
+                                w.placement === 1 ? 'place-1' : w.placement === 2 ? 'place-2' : w.placement === 3 ? 'place-3' : 'place-other'
+                              }`}>
+                                {w.placement}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="font-bold text-ink">
+                                <Link href={`/tournaments/${selectedTournament}?sport=wp`} target="_blank" className="hover:underline hover:text-coral transition-colors">
+                                  {w.teamName}
+                                </Link>
+                              </div>
+                              <div className="text-[10px] text-ink-3 flex items-center gap-1.5 mt-0.5 select-none font-semibold">
+                                <Users size={11} />
+                                <span>{w.rosterCount ?? 0} {w.rosterCount === 1 ? 'player' : 'players'} registered</span>
+                              </div>
+                            </td>
+                            <td className="text-xs font-semibold text-ink-2">
+                              {w.clubName ? (
+                                <Link href={`/clubs/${w.clubId}`} target="_blank" className="hover:underline hover:text-coral">
+                                  {w.clubName}
+                                </Link>
+                              ) : (
+                                <span className="italic text-ink-3">Independent</span>
+                              )}
+                            </td>
+                            <td className="text-xs font-semibold text-ink-2">
+                              {w.division}
+                            </td>
+                            <td className="num font-mono text-xs text-ink-2">
+                              <div className="flex flex-col text-right">
+                                <span className="font-semibold text-ink">
+                                  {w.wins ?? 0}W – {w.losses ?? 0}L
+                                </span>
+                                <span className="text-[9px] text-ink-3">
+                                  {w.goalsFor ?? 0} GF / {w.goalsAgainst ?? 0} GA
+                                </span>
+                                <span className="text-[9px] text-coral font-bold mt-0.5">
+                                  {w.points ?? 0} Pts
+                                </span>
+                              </div>
+                            </td>
+                            <td className="act">
+                              <div className="row-actions">
+                                <button
+                                  onClick={() => setEditingWpRecord(w)}
+                                  className="row-btn"
+                                  title="Edit Standings"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (confirm(`Are you sure you want to delete the standing for ${w.teamName}? This will also delete roster spots.`)) {
+                                      try {
+                                        const res = await fetch('/api/admin/records/delete', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ type: 'wp', id: w.id })
+                                        });
+                                        if (res.ok) {
+                                          showToast('Team deleted.');
+                                          router.refresh();
+                                        } else {
+                                          showToast('Failed to delete.', 'error');
+                                        }
+                                      } catch (err) {
+                                        showToast('Error deleting.', 'error');
+                                      }
+                                    }
+                                  }}
+                                  className="row-btn danger"
+                                  title="Delete Standing"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </>
+              )}
+            </table>
+
+            {/* Pagination Footer */}
+            <div className="dt-foot select-none">
+              <div>
+                Showing <span className="font-mono font-bold text-ink">{totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span>-
+                <span className="font-mono font-bold text-ink">
+                  {Math.min(currentPage * itemsPerPage, totalCount)}
+                </span> of{' '}
+                <span className="font-mono font-bold text-ink">
+                  {totalCount}
+                </span> entries
+              </div>
+              
+              {totalPages > 1 && (
+                <div className="pager">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => { if (currentPage > 1) updateUrlParams({ page: (currentPage - 1).toString() }); }}
+                    className="pg hover:bg-aqua-pale disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                  
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => updateUrlParams({ page: (i + 1).toString() })}
+                      className={`pg ${currentPage === i + 1 ? 'active' : 'hover:bg-aqua-pale'}`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => { if (currentPage < totalPages) updateUrlParams({ page: (currentPage + 1).toString() }); }}
+                    className="pg hover:bg-aqua-pale disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SWIMMING EDIT / CREATE MODAL */}
+      <EditResultModal
+        isOpen={editingSwimRecord !== null}
+        onClose={() => setEditingSwimRecord(null)}
+        recordData={editingSwimRecord}
+        athletes={athletes}
+        clubs={clubs}
+        session={session}
+        onSaveSuccess={handleSaveSuccess}
+      />
+
+      {/* WATER POLO EDIT / CREATE MODAL */}
+      <EditWPTeamModal
+        isOpen={editingWpRecord !== null}
+        onClose={() => setEditingWpRecord(null)}
+        recordData={editingWpRecord}
+        clubs={clubs}
+        session={session}
+        onSaveSuccess={handleSaveSuccess}
+      />
     </div>
   );
 }
