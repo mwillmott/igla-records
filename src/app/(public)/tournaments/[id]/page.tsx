@@ -25,9 +25,16 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
     notFound();
   }
 
-  // Only Valencia 2026 has full mock data seeded in this build.
-  // For others, the client will show the friendly Results Archive stub.
-  const hasData = id === 'valencia-2026';
+  // Check dynamically if this tournament has detailed results in the database
+  const resultsCount = db.prepare(`
+    SELECT COUNT(*) AS count FROM (
+      SELECT id FROM swimming_results WHERE tournament_id = ?
+      UNION ALL
+      SELECT id FROM water_polo_teams WHERE tournament_id = ?
+    )
+  `).get(id, id) as { count: number };
+  
+  const hasData = resultsCount ? resultsCount.count > 0 : false;
   
   let swimmingResults: any[] = [];
   let waterPoloDivisions: any[] = [];

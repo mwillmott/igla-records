@@ -52,12 +52,34 @@ console.log(`Loaded mock data from handoff:
 const getTournamentId = (name, year) => {
   const n = name.toLowerCase();
   if (n.includes('valencia') || year === 2026) return 'valencia-2026';
-  if (n.includes('washington') || n.includes('dc') || year === 2025) return 'dc-2025';
+  if ((n.includes('washington') || n.includes('dc')) && year === 2025) return 'dc-2025';
   if (n.includes('buenos') || year === 2024) return 'buenosaires-2024';
   if (n.includes('london') || year === 2023) return 'london-2023';
-  if (n.includes('palm') || year === 2022) return 'palmsprings-2022';
+  if (n.includes('palm') && year === 2022) return 'palmsprings-2022';
+  if (n.includes('palm') && year === 2025) return 'palmsprings-2025';
+  if (n.includes('lisbon') || year === 2024) return 'lisbon-2024';
+  if (n.includes('sydney') || year === 2022) return 'sydney-2022';
+  if (n.includes('new york') || n.includes('ny') || year === 2019) return 'newyork-2019';
+  if (n.includes('paris') || year === 2018) return 'paris-2018';
   return null;
 };
+
+// Legacy Tournaments definitions
+const LEGACY_TOURNAMENTS = [
+  { id: 'paris-2018', name: 'Paris 2018', coName: 'Gay Games X', city: 'Paris', country: 'France', flag: '🇫🇷', year: 2018, status: 'past', color: 'oklch(0.55 0.16 245)', description: 'Championship held in the French capital.' },
+  { id: 'newyork-2019', name: 'New York 2019', coName: 'IGLA+ Championship', city: 'New York', country: 'USA', flag: '🇺🇸', year: 2019, status: 'past', color: 'oklch(0.62 0.18 28)', description: 'World Pride and IGLA+ in NYC.' },
+  { id: 'sydney-2022', name: 'Sydney 2022', coName: 'IGLA+ Championship', city: 'Sydney', country: 'Australia', flag: '🇦🇺', year: 2022, status: 'past', color: 'oklch(0.55 0.16 200)', description: 'IGLA+ Down Under.' },
+  { id: 'lisbon-2024', name: 'Lisbon 2024', coName: 'IGLA+ Championship', city: 'Lisbon', country: 'Portugal', flag: '🇵🇹', year: 2024, status: 'past', color: 'oklch(0.65 0.18 35)', description: 'Lisbon championship.' },
+  { id: 'palmsprings-2025', name: 'Palm Springs 2025', coName: 'IGLA+ Championship', city: 'Palm Springs', country: 'USA', flag: '🇺🇸', year: 2025, status: 'past', color: 'oklch(0.68 0.16 80)', description: 'Desert swimming in Palm Springs.' }
+];
+
+// Append legacy tournaments to the array
+for (const t of LEGACY_TOURNAMENTS) {
+  if (!IGLA_TOURNAMENTS.some(existing => existing.id === t.id)) {
+    IGLA_TOURNAMENTS.push(t);
+  }
+}
+
 
 // 4. Seed Clubs
 const insertClub = db.prepare(`
@@ -233,10 +255,9 @@ console.log(`Seeded Unified Athletes (${athletesRegistry.size} athletes total).`
 // 7. Seed Club Tournament History
 const insertHistory = db.prepare(`
   INSERT INTO club_tournament_history (
-    club_id, tournament_id, medals_gold, medals_silver, medals_bronze, records_set, wp_division, wp_finish,
-    historical_year, historical_tournament, historical_flag
+    club_id, tournament_id, medals_gold, medals_silver, medals_bronze, records_set, wp_division, wp_finish
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const defaultHistory = IGLA_CLUB_HISTORY._default || [];
@@ -247,6 +268,14 @@ for (const clubId of seededClubIds) {
   
   for (const h of historyList) {
     const tId = h.tournamentId || getTournamentId(h.tournament, h.year);
+    // Valencia 2026 is fully detailed, so we calculate its history dynamically.
+    // All other tournaments are seeded as overrides/summaries in the history table.
+    if (tId === 'valencia-2026') continue;
+    if (!tId) {
+      console.warn(`Could not resolve tournament ID for legacy entry: ${h.tournament} (${h.year})`);
+      continue;
+    }
+
     insertHistory.run(
       clubId,
       tId,
@@ -255,10 +284,7 @@ for (const clubId of seededClubIds) {
       h.medals.b,
       h.records,
       h.wpDivision || null,
-      h.wpFinish || null,
-      h.year,
-      h.tournament,
-      h.flag
+      h.wpFinish || null
     );
   }
 }

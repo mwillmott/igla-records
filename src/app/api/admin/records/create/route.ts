@@ -74,49 +74,6 @@ export async function POST(request: Request) {
           timestamp
         );
 
-        // Update Club Tournament History Medals & Records
-        const placeNum = parseInt(place) || 1;
-        const gold = placeNum === 1 ? 1 : 0;
-        const silver = placeNum === 2 ? 1 : 0;
-        const bronze = placeNum === 3 ? 1 : 0;
-
-        const historyRow = db.prepare(`
-          SELECT * FROM club_tournament_history 
-          WHERE club_id = ? AND tournament_id = ?
-        `).get(club_id, tournamentId) as any;
-
-        if (historyRow) {
-          db.prepare(`
-            UPDATE club_tournament_history
-            SET medals_gold = medals_gold + ?,
-                medals_silver = medals_silver + ?,
-                medals_bronze = medals_bronze + ?,
-                records_set = records_set + ?
-            WHERE club_id = ? AND tournament_id = ?
-          `).run(gold, silver, bronze, isRecord, club_id, tournamentId);
-        } else {
-          const tInfo = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId) as any;
-          if (tInfo) {
-            db.prepare(`
-              INSERT INTO club_tournament_history (
-                club_id, tournament_id, medals_gold, medals_silver, medals_bronze, records_set,
-                historical_year, historical_tournament, historical_flag
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
-              club_id,
-              tournamentId,
-              gold,
-              silver,
-              bronze,
-              isRecord,
-              tInfo.year,
-              tInfo.name,
-              tInfo.flag
-            );
-          }
-        }
-
         // Update overall Tournament record count
         if (isRecord) {
           db.prepare(`

@@ -77,16 +77,13 @@ erDiagram
     }
     CLUB_TOURNAMENT_HISTORY {
         text club_id PK, FK
-        text tournament_id FK
+        text tournament_id PK, FK
         integer medals_gold
         integer medals_silver
         integer medals_bronze
         integer records_set
         text wp_division
         integer wp_finish
-        integer historical_year PK
-        text historical_tournament PK
-        text historical_flag
     }
     ATHLETES {
         text id PK
@@ -166,7 +163,7 @@ erDiagram
 3. **`club_tournament_history`**
    - Connects clubs to specific tournaments.
    - Stores medals won, records set, and water polo division outcomes.
-   - Features nullable foreign keys and historical text columns (`historical_tournament`) to capture historical data for legacy tournaments that lack detailed pages.
+   - Serves as a summary override table for legacy tournaments (like Paris 2018 or New York 2019) where individual results are not available in the database. For detailed tournaments with raw results, these tallies are resolved dynamically.
 
 4. **`athletes`**
    - The registry of all swimmers and polo players.
@@ -214,8 +211,7 @@ The ingestion dashboard (/admin) lets administrators upload raw result CSV files
         │
         ├─► Insert new athletes
         ├─► Insert swimming results
-        ├─► Increment club medals and records set
-        └─► Update tournament record totals
+        └─► Update tournament record totals (medals are dynamically resolved)
 ```
 
 ### Technical details
@@ -234,8 +230,7 @@ The ingestion dashboard (/admin) lets administrators upload raw result CSV files
        // 1. Commit exact matches
        // 2. Insert new athletes and record their times
        // 3. Process conflict decisions (merges vs new profiles)
-       // 4. Update Club Tournament History tables
-       // 5. Update overall Tournament record counters
+       // 4. Update overall Tournament record counters (medals are dynamically resolved)
      });
      ```
    - Ensuring atomic transactional commits guards against corrupted data sets and preserves database integrity.

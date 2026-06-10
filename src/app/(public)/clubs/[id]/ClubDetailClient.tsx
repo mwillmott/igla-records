@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import { MapPin, Users, Calendar, Trophy, Waves, Target, Sparkles, ChevronRight, ArrowLeft, Globe } from 'lucide-react';
+import { MapPin, Users, Calendar, Trophy, Waves, Target, Sparkles, ChevronRight, ArrowLeft, Globe, Info } from 'lucide-react';
 
 interface Club {
   id: string;
@@ -33,6 +33,7 @@ interface ClubHistoryEntry {
   historical_tournament: string;
   historical_flag: string;
   isLive: number;
+  is_historical_summary?: number;
 }
 
 interface ClubDetailClientProps {
@@ -216,6 +217,15 @@ export default function ClubDetailClient({ club, history }: ClubDetailClientProp
                     </span>
                   )}
                 </div>
+
+                {h.is_historical_summary === 1 && (
+                  <div className="text-xs text-ink-2 bg-bg-2 border border-ink/30 p-3 rounded mt-2.5 flex items-start gap-2 shadow-[2px_2px_0_var(--ink)] max-w-xl">
+                    <Info size={14} className="text-aqua mt-0.5 flex-shrink-0" />
+                    <span>
+                      We do not have the individual race results or team rosters in our database for this tournament. The medal counts and standings shown above are compiled from verified historical club records.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="select-none">

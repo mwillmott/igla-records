@@ -67,51 +67,6 @@ export async function POST(request: Request) {
           newRecordsCount++;
         }
         insertCount++;
-
-        // Update Club Tournament History Medals
-        const place = parseInt(uploaded.place) || 1;
-        const gold = place === 1 ? 1 : 0;
-        const silver = place === 2 ? 1 : 0;
-        const bronze = place === 3 ? 1 : 0;
-
-        // Check if history row already exists for this club and tournament
-        const historyRow = db.prepare(`
-          SELECT * FROM club_tournament_history 
-          WHERE club_id = ? AND tournament_id = ?
-        `).get(uploaded.club_id, tournamentId) as any;
-
-        if (historyRow) {
-          db.prepare(`
-            UPDATE club_tournament_history
-            SET medals_gold = medals_gold + ?,
-                medals_silver = medals_silver + ?,
-                medals_bronze = medals_bronze + ?,
-                records_set = records_set + ?
-            WHERE club_id = ? AND tournament_id = ?
-          `).run(gold, silver, bronze, isRecord, uploaded.club_id, tournamentId);
-        } else {
-          // If no history exists, fetch tournament details to fill historical year/name
-          const tInfo = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId) as any;
-          if (tInfo) {
-            db.prepare(`
-              INSERT INTO club_tournament_history (
-                club_id, tournament_id, medals_gold, medals_silver, medals_bronze, records_set,
-                historical_year, historical_tournament, historical_flag
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
-              uploaded.club_id,
-              tournamentId,
-              gold,
-              silver,
-              bronze,
-              isRecord,
-              tInfo.year,
-              tInfo.name,
-              tInfo.flag
-            );
-          }
-        }
       };
 
       // 1. Commit Exact Matches (automatic)

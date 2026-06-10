@@ -47,20 +47,16 @@ CREATE TABLE IF NOT EXISTS tournaments (
 -- 3. Club Tournament History Table
 CREATE TABLE IF NOT EXISTS club_tournament_history (
     club_id TEXT NOT NULL,
-    tournament_id TEXT, -- nullable because some historical tournaments are stubbed / not fully defined
+    tournament_id TEXT NOT NULL,
     medals_gold INTEGER NOT NULL DEFAULT 0,
     medals_silver INTEGER NOT NULL DEFAULT 0,
     medals_bronze INTEGER NOT NULL DEFAULT 0,
     records_set INTEGER NOT NULL DEFAULT 0,
     wp_division TEXT,
     wp_finish INTEGER,
-    -- Custom fields to store textual metadata for items without detailed tournament entities
-    historical_year INTEGER,
-    historical_tournament TEXT,
-    historical_flag TEXT,
-    PRIMARY KEY (club_id, historical_year, historical_tournament),
+    PRIMARY KEY (club_id, tournament_id),
     FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE,
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE SET NULL
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
 );
 
 -- 4. Athletes Table
@@ -137,3 +133,6 @@ CREATE INDEX IF NOT EXISTS idx_swimming_results_athlete ON swimming_results(athl
 CREATE INDEX IF NOT EXISTS idx_swimming_results_lookup ON swimming_results(event, age_category, gender_category, course);
 CREATE INDEX IF NOT EXISTS idx_wp_rosters_athlete ON water_polo_rosters(athlete_id);
 CREATE INDEX IF NOT EXISTS idx_wp_teams_tournament ON water_polo_teams(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_swimming_results_club_tournament ON swimming_results(club_id, tournament_id);
+CREATE INDEX IF NOT EXISTS idx_wp_teams_club_tournament ON water_polo_teams(club_id, tournament_id);
+
