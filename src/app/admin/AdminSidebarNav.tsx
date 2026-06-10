@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Trophy, UserPlus, Hash, Settings, Waves, Upload } from 'lucide-react';
+import { LayoutDashboard, Users, Trophy, UserPlus, Hash, Settings, Waves, Upload, Award } from 'lucide-react';
 
 interface SidebarNavProps {
   counts: {
@@ -83,6 +83,12 @@ export default function AdminSidebarNav({ counts }: SidebarNavProps) {
           >
             <span className="ic"><Upload size={13} /></span> Import Results
           </Link>
+          <Link 
+            href="/admin/results/history" 
+            className={`admin-subnavitem ${pathname === '/admin/results/history' ? 'active' : ''}`}
+          >
+            <span className="ic"><Award size={13} /></span> Club Summaries
+          </Link>
         </div>
       )}
 
@@ -113,6 +119,8 @@ export function AdminBreadcrumb() {
     label = 'Results › Water Polo';
   } else if (pathname.includes('/results/import')) {
     label = 'Results › Import';
+  } else if (pathname.includes('/results/history')) {
+    label = 'Results › Club Summaries';
   } else if (pathname.includes('/results')) {
     label = 'Results';
   } else if (pathname.includes('/settings')) {

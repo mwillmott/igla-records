@@ -415,7 +415,29 @@ The Athletes Management Console (`/admin/athletes`) provides a full-featured adm
 
 ---
 
-## 11. Directory Structures
+## 11. Club Summaries Management Console
+
+The Club Summaries Management Console (`/admin/results/history`) provides an administrative CRUD interface for managing legacy, aggregate club history records (`club_tournament_history`).
+
+### Key Operations & Features
+1. **Dynamic List View**: Displays all historical summaries with page routing state sync, searching, sorting, and pagination.
+2. **Medal Badges Unification**: Displays club medal counts (Gold, Silver, Bronze) utilizing the standard neobrutalist badge components referencing the `--gold`, `--silver`, and `--bronze` CSS variables, maintaining visual continuity with public profile directories.
+3. **Operational Guidance & Narrow Subhead**: Features a detailed operational notice that clarifies how stubs behave (legacy stubs override dynamically calculated stats on public pages, and individual result logs should be preferred). The description text uses a `maxWidth: '750px'` layout constraint to avoid wrapping the actions buttons row.
+4. **Interactive Creation Modal**:
+   - **Searchable Dropdowns**: Integrates a reusable [SearchableSelect](file:///Users/mwillmott/Antigravity/igla-records/src/app/components/SearchableSelect.tsx) dropdown selector for selecting clubs and tournaments.
+   - **Duplicate Record Validation**: Integrates background verify API checks on create mode. Selecting a club-tournament combination that already exists dynamically disables the submit button and renders a red `Duplicate Record Blocked` notice.
+   - **Locked Fields on Edit**: Disables selector inputs when editing a record, locking the primary keys (`club_id`, `tournament_id`) to protect database schema constraints.
+   - **Silent Background Verification**: DB records verification runs silently in the background, showing warnings directly on resolve rather than flashing distracting loaders.
+   - **Clean States**: Resets local modal input states completely on close to prevent ghost warning indicators and race conditions when transitioning from edit mode to create mode.
+
+### Backend CRUD APIs
+- **GET `/api/admin/clubs/check-results`**: Inspects the database for existing swimming/water polo records or existing summary rows for a specified `clubId` and `tournamentId` combination.
+- **POST `/api/admin/clubs/history/save`**: Saves/upserts (`ON CONFLICT(club_id, tournament_id) DO UPDATE`) aggregate stats into `club_tournament_history`.
+- **POST `/api/admin/clubs/history/delete`**: Deletes a legacy club summary override by its compound key.
+
+---
+
+## 12. Directory Structures
 
 ```
 ├── design-handoff/           # Legacy prototypes and static datasets
@@ -434,16 +456,16 @@ The Athletes Management Console (`/admin/athletes`) provides a full-featured adm
 │   └── app/
 │       ├── layout.tsx        # Next.js global layout
 │       ├── globals.css       # Full G3 CSS design system
-│       ├── components/       # Shared UI (Header.tsx, EditResultModal.tsx)
+│       ├── components/       # Shared UI (Header.tsx, EditResultModal.tsx, EditClubHistoryModal.tsx, SearchableSelect.tsx)
 │       ├── (public)/         # Public route group (shared public layout)
 │       │   ├── athletes/     # Athlete profile detail routes
 │       │   ├── clubs/        # Club listing and detail routes
 │       │   ├── results/      # Records dashboard routes
 │       │   └── tournaments/  # Tournament listing and detail routes
 │       ├── admin/            # Admin panels: ingestion (page.tsx), clubs, tournaments,
-│       │                     #   results, athletes, settings (stub)
+│       │                     #   results (with history/), athletes, settings (stub)
 │       └── api/
 │           ├── auth/         # login, callback (OAuth + mock), session, logout
-│           └── admin/        # upload, resolve, records, roster, clubs, tournaments, athletes
+│           └── admin/        # upload, resolve, records, roster, clubs (with check-results/ and history/), tournaments, athletes
 └── igla.db                   # SQLite database
 ```

@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import EditResultModal from '../../components/EditResultModal';
 import EditWPTeamModal from '../../components/EditWPTeamModal';
+import EditClubHistoryModal from '../../components/EditClubHistoryModal';
+import SearchableSelect from '../../components/SearchableSelect';
 
 interface Tournament {
   id: string;
@@ -55,12 +57,13 @@ interface Resolution {
 }
 
 interface ResultsAdminClientProps {
-  mode: 'swimming' | 'wp' | 'import';
+  mode: 'swimming' | 'wp' | 'import' | 'history';
   tournaments: Tournament[];
   athletes?: Athlete[];
   clubs?: Club[];
   swimmingResults?: any[];
   waterPoloResults?: any[];
+  clubHistoryResults?: any[];
   session: any;
   totalCount?: number;
   currentPage?: number;
@@ -73,30 +76,51 @@ interface ResultsAdminClientProps {
 export default function ResultsAdminClient({ 
   mode,
   tournaments, 
-  athletes = [], 
-  clubs = [], 
-  swimmingResults: initialSwimResults = [], 
-  waterPoloResults: initialWpResults = [], 
+  athletes: propAthletes, 
+  clubs: propClubs, 
+  swimmingResults, 
+  waterPoloResults, 
+  clubHistoryResults, 
   session,
   totalCount = 0,
   currentPage = 1,
   itemsPerPage = 15,
-  stats = {},
-  ageOptions = [],
-  divisionOptions = []
+  stats: propStats,
+  ageOptions: propAgeOptions,
+  divisionOptions: propDivisionOptions
 }: ResultsAdminClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  const athletes = useMemo(() => propAthletes || [], [propAthletes]);
+  const clubs = useMemo(() => propClubs || [], [propClubs]);
+  const stats = useMemo(() => propStats || {}, [propStats]);
+  const ageOptions = useMemo(() => propAgeOptions || [], [propAgeOptions]);
+  const divisionOptions = useMemo(() => propDivisionOptions || [], [propDivisionOptions]);
   
   // Data State sync
-  const [swimResults, setSwimResults] = useState(initialSwimResults);
-  const [wpResults, setWpResults] = useState(initialWpResults);
+  const [swimResults, setSwimResults] = useState(swimmingResults || []);
+  const [wpResults, setWpResults] = useState(waterPoloResults || []);
+  const [historyResults, setHistoryResults] = useState(clubHistoryResults || []);
 
   useEffect(() => {
-    setSwimResults(initialSwimResults);
-    setWpResults(initialWpResults);
-  }, [initialSwimResults, initialWpResults]);
+    if (swimmingResults) {
+      setSwimResults(swimmingResults);
+    }
+  }, [swimmingResults]);
+
+  useEffect(() => {
+    if (waterPoloResults) {
+      setWpResults(waterPoloResults);
+    }
+  }, [waterPoloResults]);
+
+  useEffect(() => {
+    if (clubHistoryResults) {
+      setHistoryResults(clubHistoryResults);
+    }
+  }, [clubHistoryResults]);
 
   // Read active filters and sorting from URL params
   const selectedTournament = searchParams.get('tournamentId') || 'All';
@@ -157,6 +181,7 @@ export default function ResultsAdminClient({
   // Modals edit state
   const [editingSwimRecord, setEditingSwimRecord] = useState<any | null>(null);
   const [editingWpRecord, setEditingWpRecord] = useState<any | null>(null);
+  const [editingClubHistoryRecord, setEditingClubHistoryRecord] = useState<any | null>(null);
 
   // CSV Ingestion file upload state
   const [file, setFile] = useState<File | null>(null);
@@ -328,6 +353,7 @@ export default function ResultsAdminClient({
   // Drive pagination directly from server-paginated props
   const paginatedSwim = swimResults;
   const paginatedWp = wpResults;
+  const paginatedHistory = historyResults;
 
   const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
 
@@ -379,11 +405,19 @@ export default function ResultsAdminClient({
       <div className="admin-pagehead animate-fadeIn animate-duration-200">
         <div>
           <h1>
-            Manage {mode === 'swimming' ? <em>Swimming</em> : mode === 'wp' ? <em>Water Polo</em> : <em>Ingestion</em>}
+            Manage {mode === 'swimming' ? <em>Swimming</em> : mode === 'wp' ? <em>Water Polo</em> : mode === 'history' ? <em>Club Summaries</em> : <em>Ingestion</em>}
           </h1>
-          <div className="sub">
+          <div className="sub" style={mode === 'history' ? { maxWidth: '750px' } : undefined}>
             {mode === 'swimming' && 'Edit, remove, or register individual swimming results and all-time records.'}
             {mode === 'wp' && 'Manage water polo division team standings and final placements.'}
+            {mode === 'history' && (
+              <span>
+                Manage aggregate legacy tournament summaries (medals, records, and water polo rankings) for clubs. 
+                Use these stubs <strong>only</strong> when individual results are unavailable. Because public profiles 
+                prioritize these manual summaries, adding one for a tournament with individual results 
+                <strong>will override</strong> the dynamically calculated stats. Ideally, register individual results instead.
+              </span>
+            )}
             {mode === 'import' && 'Upload raw championship spreadsheets and resolve naming ambiguities.'}
           </div>
         </div>
@@ -397,12 +431,21 @@ export default function ResultsAdminClient({
                 <Upload size={14} />
                 <span>Import CSV</span>
               </Link>
+              {mode !== 'history' && (
+                <button 
+                  onClick={handleOpenAddModal}
+                  className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2.5 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Add {mode === 'swimming' ? 'Swimmer Result' : 'Polo Team Result'}</span>
+                </button>
+              )}
               <button 
-                onClick={handleOpenAddModal}
-                className="pill active inline-flex items-center gap-2 bg-ink text-white font-semibold text-xs py-2.5 px-5 rounded-full border-2 border-ink hover:bg-ink-2 active:translate-y-[1px] cursor-pointer"
+                onClick={() => setEditingClubHistoryRecord({ isNew: true })}
+                className="pill coral inline-flex items-center gap-2 font-semibold text-xs py-2.5 px-5 rounded-full border-2 border-ink hover:bg-coral-deep active:translate-y-[1px] cursor-pointer"
               >
                 <Plus size={14} />
-                <span>Add {mode === 'swimming' ? 'Swimmer Result' : 'Polo Team Result'}</span>
+                <span>Add Club Summary</span>
               </button>
             </>
           )}
@@ -419,6 +462,29 @@ export default function ResultsAdminClient({
       </div>
 
       {/* KPI Stats Strip */}
+      {mode === 'history' && (
+        <div className="stat-strip mb-6 animate-fadeIn">
+          <div className="stat-tile">
+            <div className="stat-tile-val font-mono tabular-nums">
+              {stats.historyCount || 0}
+            </div>
+            <div className="stat-tile-key text-ink-3">Summaries Logged</div>
+          </div>
+          <div className="stat-tile">
+            <div className="stat-tile-val font-mono tabular-nums">
+              {stats.totalMedals || 0}
+            </div>
+            <div className="stat-tile-key text-ink-3">Total Medals</div>
+          </div>
+          <div className="stat-tile coral">
+            <div className="stat-tile-val font-mono text-white tabular-nums">
+              {stats.totalRecords || 0}
+            </div>
+            <div className="stat-tile-key text-white/90">All-Time Records</div>
+          </div>
+        </div>
+      )}
+
       {mode === 'swimming' && (
         <div className="stat-strip mb-6 animate-fadeIn">
           <div className="stat-tile">
@@ -492,24 +558,13 @@ export default function ResultsAdminClient({
                 </div>
               )}
 
-              {/* Tournament selector */}
-              <div className="mb-6 flex flex-col gap-2 select-none">
-                <label className="text-[10px] font-bold tracking-wider text-ink-3 uppercase">Championship Event</label>
-                <div className="sel-wrap">
-                  <select
-                    value={selectedTournament === 'All' ? tournaments[0]?.id || '' : selectedTournament}
-                    onChange={e => updateUrlParams({ tournamentId: e.target.value })}
-                    className="sel"
-                  >
-                    {tournaments.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.year})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="chev" />
-                </div>
-              </div>
+              <SearchableSelect
+                label="Championship Event"
+                placeholder="Search tournament..."
+                value={selectedTournament === 'All' ? tournaments[0]?.id || '' : selectedTournament}
+                onChange={val => updateUrlParams({ tournamentId: val })}
+                options={useMemo(() => tournaments.map(t => ({ id: t.id, name: `${t.name} (${t.year})` })), [tournaments])}
+              />
 
               {/* File Picker */}
               <div className="mb-6 flex flex-col gap-2">
@@ -805,19 +860,16 @@ export default function ResultsAdminClient({
                   <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-aqua-sky/20 border-2 border-ink text-ink select-none shrink-0">
                     <Trophy size={18} className="text-coral" />
                   </div>
-                  <div className="sel-wrap min-w-[240px] sm:min-w-[280px] w-full">
-                    <select
-                      value={selectedTournament}
-                      onChange={e => updateUrlParams({ tournamentId: e.target.value })}
-                      className="sel h-10 text-xs pl-3 pr-8 bg-white font-bold w-full cursor-pointer focus:outline-none"
-                    >
-                      <option value="All">All Championships</option>
-                      {tournaments.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.year})</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={12} className="chev" />
-                  </div>
+                  <SearchableSelect
+                    placeholder="Search tournament..."
+                    value={selectedTournament}
+                    onChange={val => updateUrlParams({ tournamentId: val })}
+                    options={useMemo(() => [
+                      { id: 'All', name: 'All Championships' },
+                      ...tournaments.map(t => ({ id: t.id, name: `${t.name} (${t.year})` }))
+                    ], [tournaments])}
+                    className="min-w-[240px] sm:min-w-[280px] w-full"
+                  />
                 </div>
               </div>
 
@@ -827,7 +879,13 @@ export default function ResultsAdminClient({
                 <div className="search w-full sm:w-[320px] h-10 bg-white !flex-none" style={{ flex: 'none' }}>
                   <Search size={14} className="text-ink-2" />
                   <input
-                    placeholder={mode === 'swimming' ? "Search event, swimmer, club..." : "Search team, club, division..."}
+                    placeholder={
+                      mode === 'swimming' 
+                        ? "Search event, swimmer, club..." 
+                        : mode === 'wp' 
+                        ? "Search team, club, division..." 
+                        : "Search club..."
+                    }
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     className="w-full text-xs font-semibold placeholder:text-ink-3 placeholder:font-normal"
@@ -974,6 +1032,7 @@ export default function ResultsAdminClient({
                     <tr>
                       <th style={{ width: '8%' }}>
                         <button 
+                          type="button"
                           onClick={() => toggleSort('place')}
                           className={`sortable ${sortField === 'place' ? 'on' : ''}`}
                         >
@@ -983,6 +1042,7 @@ export default function ResultsAdminClient({
                       </th>
                       <th style={{ width: '22%' }}>
                         <button 
+                          type="button"
                           onClick={() => toggleSort('athlete')}
                           className={`sortable ${sortField === 'athlete' ? 'on' : ''}`}
                         >
@@ -992,6 +1052,7 @@ export default function ResultsAdminClient({
                       </th>
                       <th style={{ width: '25%' }}>
                         <button 
+                          type="button"
                           onClick={() => toggleSort('event')}
                           className={`sortable ${sortField === 'event' ? 'on' : ''}`}
                         >
@@ -1104,13 +1165,14 @@ export default function ResultsAdminClient({
                     )}
                   </tbody>
                 </>
-              ) : (
+              ) : mode === 'wp' ? (
                 <>
                   <thead>
                     <tr>
                       <th style={{ width: '8%' }}>Rank</th>
                       <th style={{ width: '30%' }}>
                         <button 
+                          type="button"
                           onClick={() => toggleSort('teamName')}
                           className={`sortable ${sortField === 'teamName' ? 'on' : ''}`}
                         >
@@ -1122,6 +1184,7 @@ export default function ResultsAdminClient({
                       <th style={{ width: '15%' }}>Division</th>
                       <th className="num" style={{ width: '15%' }}>
                         <button 
+                          type="button"
                           onClick={() => toggleSort('points')}
                           className={`sortable ${sortField === 'points' ? 'on' : ''}`}
                         >
@@ -1228,6 +1291,144 @@ export default function ResultsAdminClient({
                     )}
                   </tbody>
                 </>
+              ) : (
+                <>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '25%' }}>
+                        <button 
+                          type="button"
+                          onClick={() => toggleSort('tournament')}
+                          className={`sortable ${sortField === 'tournament' ? 'on' : ''}`}
+                        >
+                          Tournament
+                          {sortField === 'tournament' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th style={{ width: '25%' }}>
+                        <button 
+                          type="button"
+                          onClick={() => toggleSort('club')}
+                          className={`sortable ${sortField === 'club' ? 'on' : ''}`}
+                        >
+                          Club
+                          {sortField === 'club' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                        </button>
+                      </th>
+                      <th style={{ width: '20%' }}>Medals (G / S / B)</th>
+                      <th style={{ width: '10%' }}>Records Set</th>
+                      <th style={{ width: '12%' }}>Water Polo Standing</th>
+                      <th className="act" style={{ width: '8%' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-ink-3 italic">
+                          No club tournament summaries match your filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedHistory.map((h) => {
+                        const hasWpStanding = !!h.wpDivision;
+                        return (
+                          <tr key={`${h.clubId}-${h.tournamentId}`}>
+                            <td>
+                              <div className="font-bold text-ink">
+                                <Link href={`/tournaments/${h.tournamentId}`} target="_blank" className="hover:underline hover:text-coral transition-colors">
+                                  {h.tournamentName}
+                                </Link>
+                              </div>
+                              <span className="text-[10px] text-ink-3 select-none">{h.tournamentYear}</span>
+                            </td>
+                            <td>
+                              <div className="font-semibold text-ink flex items-center gap-1.5">
+                                <span className="text-sm shrink-0" role="img" aria-label="flag">{h.clubFlag}</span>
+                                <Link href={`/clubs/${h.clubId}`} target="_blank" className="hover:underline hover:text-coral transition-colors">
+                                  {h.clubName}
+                                </Link>
+                              </div>
+                              <span className="text-[10px] text-ink-3 font-mono select-none">{h.clubId.toUpperCase()}</span>
+                            </td>
+                            <td>
+                              <div className="flex items-center gap-1 select-none">
+                                <span className="flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider text-ink bg-white/60 border border-ink/10 py-0.5 px-1.5 rounded-full shadow-[1px_1.5px_0_#0d3a52] whitespace-nowrap" title="Gold Medals">
+                                  <span className="w-2 h-2 rounded-full border border-ink inline-block" style={{ background: 'var(--gold)' }} />
+                                  <span>{h.medalsGold} G</span>
+                                </span>
+                                <span className="flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider text-ink bg-white/60 border border-ink/10 py-0.5 px-1.5 rounded-full shadow-[1px_1.5px_0_#0d3a52] whitespace-nowrap" title="Silver Medals">
+                                  <span className="w-2 h-2 rounded-full border border-ink inline-block" style={{ background: 'var(--silver)' }} />
+                                  <span>{h.medalsSilver} S</span>
+                                </span>
+                                <span className="flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider text-ink bg-white/60 border border-ink/10 py-0.5 px-1.5 rounded-full shadow-[1px_1.5px_0_#0d3a52] whitespace-nowrap" title="Bronze Medals">
+                                  <span className="w-2 h-2 rounded-full border border-ink inline-block" style={{ background: 'var(--bronze)' }} />
+                                  <span>{h.medalsBronze} B</span>
+                                </span>
+                              </div>
+                            </td>
+                            <td className="font-mono text-xs font-bold text-ink tabular-nums">
+                              {h.recordsSet > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-coral-pale border border-coral/30 rounded text-coral-deep font-bold">
+                                  ★ {h.recordsSet}
+                                </span>
+                              ) : (
+                                <span className="text-ink-3">0</span>
+                              )}
+                            </td>
+                            <td>
+                              {hasWpStanding ? (
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-semibold text-ink">{h.wpDivision}</span>
+                                  <span className="text-[10px] text-ink-3">Rank: {h.wpFinish}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-ink-3 italic">None</span>
+                              )}
+                            </td>
+                            <td className="act">
+                              <div className="row-actions">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingClubHistoryRecord(h)}
+                                  className="row-btn"
+                                  title="Edit Club Summary"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (confirm(`Are you sure you want to delete the tournament summary for ${h.clubName} at ${h.tournamentName}?`)) {
+                                      try {
+                                        const res = await fetch('/api/admin/clubs/history/delete', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ clubId: h.clubId, tournamentId: h.tournamentId })
+                                        });
+                                        if (res.ok) {
+                                          showToast('Club tournament history summary deleted.');
+                                          router.refresh();
+                                        } else {
+                                          showToast('Failed to delete.', 'error');
+                                        }
+                                      } catch (err) {
+                                        showToast('Error deleting.', 'error');
+                                      }
+                                    }
+                                  }}
+                                  className="row-btn danger"
+                                  title="Delete Club Summary"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </>
               )}
             </table>
 
@@ -1296,6 +1497,22 @@ export default function ResultsAdminClient({
         clubs={clubs}
         session={session}
         onSaveSuccess={handleSaveSuccess}
+      />
+
+      {/* CLUB TOURNAMENT HISTORY SUMMARY MODAL */}
+      <EditClubHistoryModal
+        isOpen={editingClubHistoryRecord !== null}
+        onClose={() => setEditingClubHistoryRecord(null)}
+        defaultTournamentId={selectedTournament === 'All' ? '' : selectedTournament}
+        recordData={editingClubHistoryRecord}
+        tournaments={tournaments}
+        clubs={clubs}
+        session={session}
+        onSaveSuccess={() => {
+          setEditingClubHistoryRecord(null);
+          showToast('Club summary record saved successfully!');
+          router.refresh();
+        }}
       />
     </div>
   );
