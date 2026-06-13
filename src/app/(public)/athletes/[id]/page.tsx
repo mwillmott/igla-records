@@ -50,7 +50,7 @@ export default async function AthleteDetailPage({ params }: PageProps) {
     FROM swimming_results r
     JOIN tournaments t ON r.tournament_id = t.id
     LEFT JOIN athletes ab ON r.broken_by_athlete_id = ab.id
-    WHERE r.athlete_id = ?
+    WHERE r.athlete_id = ? AND r.verified = 1
     ORDER BY t.year DESC, r.event ASC
   `).all(id) as any[];
 
@@ -69,7 +69,7 @@ export default async function AthleteDetailPage({ params }: PageProps) {
     FROM water_polo_rosters roster
     JOIN water_polo_teams team ON roster.team_id = team.id
     JOIN tournaments t ON team.tournament_id = t.id
-    WHERE roster.athlete_id = ?
+    WHERE roster.athlete_id = ? AND team.verified = 1
     ORDER BY t.year DESC
   `).all(id) as any[];
 

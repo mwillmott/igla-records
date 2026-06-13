@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     if (type === 'swimming') {
       // Check if result exists
-      const existing = db.prepare('SELECT id FROM swimming_results WHERE id = ?').get(id);
+      const existing = db.prepare('SELECT id, verified, verified_at, verified_by FROM swimming_results WHERE id = ?').get(id) as any;
       if (!existing) {
         return NextResponse.json({ error: 'Swimming result not found' }, { status: 404 });
       }
@@ -42,7 +42,19 @@ export async function POST(request: Request) {
         record_still_held,
         athlete_id,
         broken_by_athlete_id,
+        verified,
       } = fields;
+
+      const newVerified = verified ? 1 : 0;
+      let verifiedAt = existing.verified_at;
+      let verifiedBy = existing.verified_by;
+      if (newVerified && !existing.verified) {
+        verifiedAt = timestamp;
+        verifiedBy = session.email;
+      } else if (!newVerified) {
+        verifiedAt = null;
+        verifiedBy = null;
+      }
 
       db.prepare(`
         UPDATE swimming_results
@@ -56,6 +68,9 @@ export async function POST(request: Request) {
             record_still_held = ?,
             athlete_id = ?,
             broken_by_athlete_id = ?,
+            verified = ?,
+            verified_at = ?,
+            verified_by = ?,
             updated_by = ?,
             updated_at = ?
         WHERE id = ?
@@ -70,6 +85,9 @@ export async function POST(request: Request) {
         record_still_held ? 1 : 0,
         athlete_id || null,
         broken_by_athlete_id || null,
+        newVerified,
+        verifiedAt,
+        verifiedBy,
         session.email,
         timestamp,
         id
@@ -77,7 +95,7 @@ export async function POST(request: Request) {
     } else {
       // Water Polo Team update
       // Check if team exists
-      const existing = db.prepare('SELECT id FROM water_polo_teams WHERE id = ?').get(id);
+      const existing = db.prepare('SELECT id, verified, verified_at, verified_by FROM water_polo_teams WHERE id = ?').get(id) as any;
       if (!existing) {
         return NextResponse.json({ error: 'Water Polo team not found' }, { status: 404 });
       }
@@ -92,7 +110,19 @@ export async function POST(request: Request) {
         goals_for,
         goals_against,
         points,
+        verified,
       } = fields;
+
+      const newVerified = verified ? 1 : 0;
+      let verifiedAt = existing.verified_at;
+      let verifiedBy = existing.verified_by;
+      if (newVerified && !existing.verified) {
+        verifiedAt = timestamp;
+        verifiedBy = session.email;
+      } else if (!newVerified) {
+        verifiedAt = null;
+        verifiedBy = null;
+      }
 
       db.prepare(`
         UPDATE water_polo_teams
@@ -105,6 +135,9 @@ export async function POST(request: Request) {
             goals_for = ?,
             goals_against = ?,
             points = ?,
+            verified = ?,
+            verified_at = ?,
+            verified_by = ?,
             updated_by = ?,
             updated_at = ?
         WHERE id = ?
@@ -118,6 +151,9 @@ export async function POST(request: Request) {
         goals_for !== undefined && goals_for !== '' && goals_for !== null ? parseInt(goals_for) : null,
         goals_against !== undefined && goals_against !== '' && goals_against !== null ? parseInt(goals_against) : null,
         points !== undefined && points !== '' && points !== null ? parseInt(points) : null,
+        newVerified,
+        verifiedAt,
+        verifiedBy,
         session.email,
         timestamp,
         id

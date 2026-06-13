@@ -28,9 +28,9 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
   // Check dynamically if this tournament has detailed results in the database
   const resultsCount = db.prepare(`
     SELECT COUNT(*) AS count FROM (
-      SELECT id FROM swimming_results WHERE tournament_id = ?
+      SELECT id FROM swimming_results WHERE tournament_id = ? AND verified = 1
       UNION ALL
-      SELECT id FROM water_polo_teams WHERE tournament_id = ?
+      SELECT id FROM water_polo_teams WHERE tournament_id = ? AND verified = 1
     )
   `).get(id, id) as { count: number };
   
@@ -70,7 +70,7 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
       JOIN clubs c ON r.club_id = c.id
       JOIN tournaments t ON r.tournament_id = t.id
       LEFT JOIN athletes ab ON r.broken_by_athlete_id = ab.id
-      WHERE r.tournament_id = ?
+      WHERE r.tournament_id = ? AND r.verified = 1
       ORDER BY r.event ASC, r.age_category ASC, r.gender_category ASC, r.place ASC
     `).all(id);
 
@@ -79,7 +79,7 @@ export default async function TournamentDetailPage({ params, searchParams }: Pag
       SELECT t.*, c.name AS clubName
       FROM water_polo_teams t
       LEFT JOIN clubs c ON t.club_id = c.id
-      WHERE t.tournament_id = ? 
+      WHERE t.tournament_id = ? AND t.verified = 1
       ORDER BY t.division ASC, t.final_placement ASC
     `).all(id) as any[];
 

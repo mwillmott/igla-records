@@ -1030,7 +1030,7 @@ export default function ResultsAdminClient({
                 <>
                   <thead>
                     <tr>
-                      <th style={{ width: '8%' }}>
+                      <th style={{ width: '6%' }}>
                         <button 
                           type="button"
                           onClick={() => toggleSort('place')}
@@ -1040,7 +1040,7 @@ export default function ResultsAdminClient({
                           {sortField === 'place' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
                         </button>
                       </th>
-                      <th style={{ width: '22%' }}>
+                      <th style={{ width: '20%' }}>
                         <button 
                           type="button"
                           onClick={() => toggleSort('athlete')}
@@ -1050,7 +1050,7 @@ export default function ResultsAdminClient({
                           {sortField === 'athlete' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
                         </button>
                       </th>
-                      <th style={{ width: '25%' }}>
+                      <th style={{ width: '22%' }}>
                         <button 
                           type="button"
                           onClick={() => toggleSort('event')}
@@ -1060,16 +1060,17 @@ export default function ResultsAdminClient({
                           {sortField === 'event' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
                         </button>
                       </th>
-                      <th style={{ width: '15%' }}>Categories</th>
+                      <th style={{ width: '14%' }}>Categories</th>
                       <th style={{ width: '10%' }}>Swim Time</th>
-                      <th style={{ width: '12%' }}>Record Status</th>
+                      <th style={{ width: '10%' }}>Record Status</th>
+                      <th style={{ width: '10%' }}>Status</th>
                       <th className="act" style={{ width: '8%' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedSwim.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-ink-3 italic">
+                        <td colSpan={8} className="p-8 text-center text-ink-3 italic">
                           No swimming results match your filters for this tournament.
                         </td>
                       </tr>
@@ -1123,6 +1124,19 @@ export default function ResultsAdminClient({
                                 <span className="text-[10px] text-ink-3 italic select-none">Regular</span>
                               )}
                             </td>
+                            <td>
+                              {r.verified === 1 ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] py-0.5 px-2 rounded-full font-bold border border-emerald-500/20 bg-emerald-50 text-emerald-700 select-none uppercase tracking-wider">
+                                  <CheckCircle2 size={10} className="text-emerald-600" />
+                                  <span>Verified</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[9px] py-0.5 px-2 rounded-full font-bold border border-amber-500/20 bg-amber-50 text-amber-700 select-none uppercase tracking-wider" title="Pending Admin Verification">
+                                  <AlertCircle size={10} className="text-amber-600" />
+                                  <span>Pending</span>
+                                </span>
+                              )}
+                            </td>
                             <td className="act">
                               <div className="row-actions">
                                 <button
@@ -1169,8 +1183,8 @@ export default function ResultsAdminClient({
                 <>
                   <thead>
                     <tr>
-                      <th style={{ width: '8%' }}>Rank</th>
-                      <th style={{ width: '30%' }}>
+                      <th style={{ width: '6%' }}>Rank</th>
+                      <th style={{ width: '25%' }}>
                         <button 
                           type="button"
                           onClick={() => toggleSort('teamName')}
@@ -1180,8 +1194,8 @@ export default function ResultsAdminClient({
                           {sortField === 'teamName' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
                         </button>
                       </th>
-                      <th style={{ width: '22%' }}>Club Represented</th>
-                      <th style={{ width: '15%' }}>Division</th>
+                      <th style={{ width: '20%' }}>Club Represented</th>
+                      <th style={{ width: '14%' }}>Division</th>
                       <th className="num" style={{ width: '15%' }}>
                         <button 
                           type="button"
@@ -1192,13 +1206,14 @@ export default function ResultsAdminClient({
                           {sortField === 'points' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
                         </button>
                       </th>
+                      <th style={{ width: '10%' }}>Status</th>
                       <th className="act" style={{ width: '10%' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedWp.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-ink-3 italic">
+                        <td colSpan={7} className="p-8 text-center text-ink-3 italic">
                           No water polo standings match your filters for this tournament.
                         </td>
                       </tr>
@@ -1248,6 +1263,19 @@ export default function ResultsAdminClient({
                                   {w.points ?? 0} Pts
                                 </span>
                               </div>
+                            </td>
+                            <td>
+                              {w.verified === 1 ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] py-0.5 px-2 rounded-full font-bold border border-emerald-500/20 bg-emerald-50 text-emerald-700 select-none uppercase tracking-wider">
+                                  <CheckCircle2 size={10} className="text-emerald-600" />
+                                  <span>Verified</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[9px] py-0.5 px-2 rounded-full font-bold border border-amber-500/20 bg-amber-50 text-amber-700 select-none uppercase tracking-wider" title="Pending Admin Verification">
+                                  <AlertCircle size={10} className="text-amber-600" />
+                                  <span>Pending</span>
+                                </span>
+                              )}
                             </td>
                             <td className="act">
                               <div className="row-actions">

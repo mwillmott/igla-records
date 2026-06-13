@@ -51,9 +51,9 @@ export async function POST(request: Request) {
           INSERT INTO swimming_results (
             id, athlete_id, club_id, tournament_id, event, course, age_category,
             gender_category, time, place, is_all_time_record, record_still_held,
-            broken_by_athlete_id, created_by, created_at, updated_by, updated_at
+            broken_by_athlete_id, verified, verified_at, verified_by, created_by, created_at, updated_by, updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           resultId,
           athlete_id || null,
@@ -68,6 +68,9 @@ export async function POST(request: Request) {
           isRecord,
           record_still_held ? 1 : 0,
           broken_by_athlete_id || null,
+          1,
+          timestamp,
+          session.email,
           session.email,
           timestamp,
           session.email,
@@ -108,9 +111,10 @@ export async function POST(request: Request) {
           INSERT INTO water_polo_teams (
             id, tournament_id, club_id, division, final_placement, team_name,
             wins, losses, goals_for, goals_against, points,
+            verified, verified_at, verified_by,
             created_by, created_at, updated_by, updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           teamId,
           tournamentId,
@@ -123,6 +127,9 @@ export async function POST(request: Request) {
           goals_for !== undefined && goals_for !== '' && goals_for !== null ? parseInt(goals_for) : null,
           goals_against !== undefined && goals_against !== '' && goals_against !== null ? parseInt(goals_against) : null,
           points !== undefined && points !== '' && points !== null ? parseInt(points) : null,
+          1,
+          timestamp,
+          session.email,
           session.email,
           timestamp,
           session.email,

@@ -36,7 +36,7 @@ export default async function ResultsPage() {
     JOIN clubs c ON r.club_id = c.id
     JOIN tournaments t ON r.tournament_id = t.id
     LEFT JOIN athletes ab ON r.broken_by_athlete_id = ab.id
-    WHERE r.is_all_time_record = 1
+    WHERE r.is_all_time_record = 1 AND r.verified = 1
     ORDER BY r.event ASC, r.age_category ASC, r.gender_category ASC
   `).all();
 
@@ -66,6 +66,7 @@ export default async function ResultsPage() {
     FROM water_polo_teams t
     JOIN tournaments trn ON t.tournament_id = trn.id
     LEFT JOIN clubs c ON t.club_id = c.id
+    WHERE t.verified = 1
     ORDER BY trn.year DESC, t.division ASC, t.final_placement ASC
   `).all();
 

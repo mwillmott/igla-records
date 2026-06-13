@@ -50,6 +50,7 @@ export default function EditWPTeamModal({
         goals_for: recordData.goalsFor || recordData.goals_for || '',
         goals_against: recordData.goalsAgainst || recordData.goals_against || '',
         points: recordData.points !== null && recordData.points !== undefined ? recordData.points : '',
+        verified: recordData.isNew || !recordData.id ? true : (recordData.verified === 1 || recordData.verified === true || false),
       });
     }
   }, [isOpen, recordData]);
@@ -288,6 +289,20 @@ export default function EditWPTeamModal({
             </div>
           </div>
 
+          {/* Toggle for Verification Status */}
+          <div className="flex items-center justify-between gap-4 p-3 bg-bg-2 border-2 border-ink/10 rounded-xl select-none">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-ink">Verified Status</span>
+              <span className="text-[10px] text-ink-3">Has this result been verified by an admin?</span>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={editFields.verified || false}
+              onChange={e => updateField('verified', e.target.checked)}
+              className="w-5 h-5 accent-coral cursor-pointer"
+            />
+          </div>
+
           {/* BEAUTIFUL AUDIT TRAIL LOG */}
           {!recordData.isNew && (
             <div className="p-4 bg-aqua-sky/15 border-2 border-dashed border-ink/20 rounded-2xl flex flex-col gap-2.5 mt-2">
@@ -297,6 +312,29 @@ export default function EditWPTeamModal({
               </div>
               
               <div className="text-xs flex flex-col gap-1.5">
+                <div className="flex justify-between items-center text-[11px] text-ink-2">
+                  <span>Verification Status:</span>
+                  <span className={`font-bold text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded border select-none ${
+                    recordData.verified === 1 
+                      ? 'bg-emerald-50 border-emerald-500/20 text-emerald-700' 
+                      : 'bg-amber-50 border-amber-500/20 text-amber-700'
+                  }`}>
+                    {recordData.verified === 1 ? 'Verified' : 'Pending'}
+                  </span>
+                </div>
+                {recordData.verified === 1 && recordData.verifiedBy && (
+                  <>
+                    <div className="flex justify-between items-center text-[11px] text-ink-2">
+                      <span>Verified By:</span>
+                      <span className="font-semibold text-ink">{recordData.verifiedBy}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-ink-3 font-mono leading-none">
+                      <span>Verified At:</span>
+                      <span>{formatDate(recordData.verifiedAt)}</span>
+                    </div>
+                    <div className="h-[1.5px] border-t border-dashed border-ink/20 my-1" />
+                  </>
+                )}
                 <div className="flex justify-between items-center text-[11px] text-ink-2">
                   <span>Originally Created By:</span>
                   <span className="font-semibold text-ink">{recordData.created_by || 'system@igla.org'}</span>

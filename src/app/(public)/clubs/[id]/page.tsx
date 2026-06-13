@@ -25,9 +25,9 @@ export default async function ClubDetailPage({ params }: PageProps) {
     WITH club_all_tournaments AS (
       SELECT tournament_id FROM club_tournament_history WHERE club_id = :clubId
       UNION
-      SELECT tournament_id FROM swimming_results WHERE club_id = :clubId
+      SELECT tournament_id FROM swimming_results WHERE club_id = :clubId AND verified = 1
       UNION
-      SELECT tournament_id FROM water_polo_teams WHERE club_id = :clubId
+      SELECT tournament_id FROM water_polo_teams WHERE club_id = :clubId AND verified = 1
     ),
     dynamic_stats AS (
       SELECT 
@@ -47,7 +47,7 @@ export default async function ClubDetailPage({ params }: PageProps) {
           SUM(CASE WHEN place = 3 THEN 1 ELSE 0 END) AS medals_bronze,
           SUM(CASE WHEN is_all_time_record = 1 THEN 1 ELSE 0 END) AS records_set
         FROM swimming_results
-        WHERE club_id = :clubId
+        WHERE club_id = :clubId AND verified = 1
         GROUP BY tournament_id
       ) s ON ct.tournament_id = s.tournament_id
       LEFT JOIN (
@@ -56,7 +56,7 @@ export default async function ClubDetailPage({ params }: PageProps) {
           division AS wp_division,
           final_placement AS wp_finish
         FROM water_polo_teams
-        WHERE club_id = :clubId
+        WHERE club_id = :clubId AND verified = 1
       ) w ON ct.tournament_id = w.tournament_id
     )
     SELECT 

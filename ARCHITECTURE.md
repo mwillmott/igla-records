@@ -108,6 +108,9 @@ erDiagram
         boolean is_all_time_record
         boolean record_still_held
         text broken_by_athlete_id FK
+        boolean verified
+        text verified_at
+        text verified_by
         text created_by
         text created_at
         text updated_by
@@ -125,6 +128,9 @@ erDiagram
         integer goals_for
         integer goals_against
         integer points
+        boolean verified
+        text verified_at
+        text verified_by
         text created_by
         text created_at
         text updated_by
@@ -172,11 +178,13 @@ erDiagram
 5. **`swimming_results`**
    - Individual swim times and rankings.
    - Handles record status flags (`is_all_time_record`, `record_still_held`) and self-references the athlete who subsequently broke the record.
+   - Supports verification properties (`verified`, `verified_at`, `verified_by`) to isolate unverified user-submitted results in the future.
    - Stores tracking metadata (`created_by`, `created_at`, `updated_by`, `updated_at`) for audit logging.
 
 6. **`water_polo_teams`**
    - Placements and records for water polo teams inside tournaments.
    - Tracks division details and results.
+   - Supports verification properties (`verified`, `verified_at`, `verified_by`).
    - Houses administrative tracking columns.
 
 7. **`water_polo_rosters`**
@@ -376,6 +384,7 @@ The Results Management Console (`/admin/results`) lets administrators correct an
    - **Water polo teams** — team name, club, division, final placement, and the win/loss/goals/points statistics.
 6. **Water Polo Roster Editing**: Rosters for a water polo team can be edited inline. Adding a player supports either selecting an existing athlete or **creating a brand-new athlete profile on the fly** (auto-generating a slug ID, defaulting pronouns/hometown), all within a single atomic transaction. Duplicate-roster and missing-team conditions are rejected with descriptive errors.
 7. **Audit Trail**: Every edit stamps `updated_by` (the acting admin's email) and `updated_at`, which surface in the UI as a "who/when" indicator (see §6).
+8. **Verification & Moderation**: Admin views display verification badges (`Verified` / `Pending`) for results. Verification state can be toggled by admins in the edit modals. Public-facing views filter out unverified records automatically.
 
 ### Backend & Page Routes
 - **Page `/admin/results/swimming`**: Renders swimming results list using dynamic server query bindings.
